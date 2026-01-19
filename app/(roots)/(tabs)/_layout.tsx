@@ -10,15 +10,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="walks"
-        options={{
-          title: 'Walks',
-        }}
-      />
-      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
+        }}
+      />
+      <Tabs.Screen
+        name="walks"
+        options={{
+          title: 'Walks',
         }}
       />
     </Tabs>
