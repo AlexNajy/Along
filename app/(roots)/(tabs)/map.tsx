@@ -3,8 +3,8 @@ import { Text, View } from "react-native"
 
 const Map = () => {
     return (
-        <View className="flex-1 items-center justify-center bg-red-600">
-            <Text className="text-xl font-bold text-blue-500">
+        <View>
+            <Text>
                 Welcome to Nativewind!
             </Text>
         </View>
