@@ -1,10 +1,12 @@
 import React from "react";
-import {Text, View} from "react-native"
+import { Text, View } from "react-native"
 
 const Map = () => {
     return (
         <View>
-            <Text>Map Page</Text>
+            <Text>
+                Welcome to Nativewind!
+            </Text>
         </View>
     )
 }
