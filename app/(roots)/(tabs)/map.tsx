@@ -4,9 +4,7 @@ import { Text, View } from "react-native"
 const Map = () => {
     return (
         <View>
-            <Text>
-                Welcome to Nativewind!
-            </Text>
+            <Text className="font-Bold my-10 font-rubik text-3xl">This is a test for the rubik font -alex is pussylips at coding- </Text>
         </View>
     )
 }
