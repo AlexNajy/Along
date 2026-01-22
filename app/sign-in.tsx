@@ -3,9 +3,10 @@ import { ScrollView, Text, View, Image, TouchableOpacity, } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context";
 import images from "@/constants/images";
 import icons from "@/constants/icons";
+import { router } from "expo-router";
 
 const SignIn = () => {
-    const handleLogin = () => { };
+    const handleLogin = () => {router.push("/(roots)/(tabs)/map")};
 
     return (
         <SafeAreaView className="bg-white h-full">
