@@ -2,13 +2,18 @@ import React, { useState, useEffect } from "react";
 import { Text, View, FlatList } from "react-native"
 import { supabase } from "@/libs/supabase";
 
+type DemoRow = {
+    id: number;
+    name: string;
+  };
+
 const Walks = () => {
-    const [names, setNames] = useState([]);
+    const [names, setNames] = useState<DemoRow[]>([]);
 
     useEffect(() => {
         const getNames = async () => {
             try {
-                const { data: names, error } = await supabase.from('demo').select('*');
+                const { data: names, error } = await supabase.from<string, string>('demo').select('*');
 
                 if (error) {
                     console.error('Error fetching names:', error.message);
@@ -19,7 +24,11 @@ const Walks = () => {
                     setNames(names);
                 }
             } catch (error) {
-                console.error('Error fetching names:', error.message);
+                if (error instanceof Error) {
+                    console.error('Error fetching names:', error.message);
+                } else {
+                    console.error('Error fetching names:', error);
+                }
             }
         };
 
