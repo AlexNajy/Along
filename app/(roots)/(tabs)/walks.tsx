@@ -13,7 +13,7 @@ const Walks = () => {
     useEffect(() => {
         const getNames = async () => {
             try {
-                const { data: names, error } = await supabase.from<string, string>('demo').select('*');
+                const { data: names, error } = await supabase.from('demo').select('*');
 
                 if (error) {
                     console.error('Error fetching names:', error.message);
