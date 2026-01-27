@@ -9,6 +9,7 @@ import { supabase } from "@/libs/supabase";
 
 const SignIn = () => {
     const [isLoading, setIsLoading] = useState(false);
+
     useEffect(() => {
         GoogleSignin.configure({
             iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
@@ -20,7 +21,7 @@ const SignIn = () => {
 
         try {
             setIsLoading(true);
-            await GoogleSignin.hasPlayServices();
+             
             
             const response = await GoogleSignin.signIn();
             
