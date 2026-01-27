@@ -1,56 +1,54 @@
 {
-  "expo": {
-    "name": "Along",
-    "slug": "Along",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "restate",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/favicon.png"
-      }
-    },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png",
-      "bundler": "metro"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "resizeMode": "cover",
-          "backgroundColor": "#ffffff",
-          "enableFullScreenImage_legacy": true
-        }
-      ],
-      [
-        "expo-font",
-        {
-          "fonts": [
-            "/assets/fonts/Rubik-Bold.ttf",
-            "/assets/fonts/Rubik-ExtraBold.ttf",
-            "/assets/fonts/Rubik-Light.ttf",
-            "/assets/fonts/Rubik-Medium.ttf",
-            "/assets/fonts/Rubik-Regular.ttf",
-            "/assets/fonts/Rubik-SemiBold.ttf"
+    "expo": {
+      "name": "Along",
+      "slug": "Along",
+      "version": "1.0.0",
+      "orientation": "portrait",
+      "icon": "./assets/images/icon.png",
+      "userInterfaceStyle": "automatic",
+      "newArchEnabled": true,
+      "ios": {
+        "supportsTablet": true,
+        "bundleIdentifier": "com.anonymous.Along",
+        "infoPlist": {
+          "CFBundleURLTypes": [
+            {
+              "CFBundleURLSchemes": [
+                "com.googleusercontent.apps.353671954519-7lov44i083k79ngdilpn4jil5evfhqhb"
+              ]
+            }
           ]
         }
+      },
+      "android": {
+        "adaptiveIcon": {
+          "backgroundColor": "#E6F4FE",
+          "foregroundImage": "./assets/images/favicon.png"
+        },
+        "package": "com.anonymous.Along"
+      },
+      "web": {
+        "output": "static",
+        "favicon": "./assets/images/favicon.png",
+        "bundler": "metro"
+      },
+      "plugins": [
+        "expo-router",
+        [
+          "expo-splash-screen",
+          {
+            "image": "./assets/images/splash-icon.png",
+            "resizeMode": "cover",
+            "backgroundColor": "#ffffff",
+            "enableFullScreenImage_legacy": true
+          }
+        ],
+        "expo-sqlite",
+        "@react-native-google-signin/google-signin"
       ],
-      "expo-sqlite"
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "experiments": {
+        "typedRoutes": true,
+        "reactCompiler": true
+      }
     }
   }
-}

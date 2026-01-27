@@ -1,12 +1,68 @@
-import React from "react";
-import { ScrollView, Text, View, Image, TouchableOpacity, } from "react-native"
+import React, {useEffect, useState} from "react";
+import { ScrollView, Text, View, Image, TouchableOpacity, Alert} from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context";
 import images from "@/constants/images";
 import icons from "@/constants/icons";
+import { GoogleSignin, statusCodes, isSuccessResponse } from '@react-native-google-signin/google-signin';
 import { router } from "expo-router";
+import { supabase } from "@/libs/supabase";
 
 const SignIn = () => {
-    const handleLogin = () => {router.push("/(roots)/(tabs)/map")};
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        GoogleSignin.configure({
+            iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+        });
+    }, []);
+
+    const handleLogin = async () => {
+        if (isLoading) return;
+
+        try {
+            setIsLoading(true);
+             
+            
+            const response = await GoogleSignin.signIn();
+            
+            if (isSuccessResponse(response)) {
+                const idToken = response.data.idToken;
+                setIsLoading(false);
+                
+                if (!idToken) {
+                    Alert.alert('Error', 'Failed to get ID token from Google');
+                    return;
+                }
+                
+                const { data, error } = await supabase.auth.signInWithIdToken({
+                    provider: 'google',
+                    token: idToken,
+                    nonce: undefined, 
+                });
+
+                if (error) {
+                    Alert.alert('Sign In Error', error.message);
+                    console.error('Supabase auth error:', error);
+                    return;
+                }
+
+                console.log('Signed in successfully:', data.user?.email);
+                router.replace("/(roots)/(tabs)/map");
+            }
+        } catch (error: any) {
+            console.error('Google Sign In error:', error);
+            
+            if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+                console.log('User cancelled sign in');
+            } else if (error.code === statusCodes.IN_PROGRESS) {
+                Alert.alert('Error', 'Sign in is already in progress');
+            } else {
+                Alert.alert('Error', error.message || 'Something went wrong during sign in');
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <SafeAreaView className="bg-white h-full">
