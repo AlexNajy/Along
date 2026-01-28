@@ -45,7 +45,8 @@
         }
       ],
       "expo-sqlite",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "@rnmapbox/maps"
     ],
     "experiments": {
       "typedRoutes": true,
