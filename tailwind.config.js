@@ -30,6 +30,9 @@ module.exports = {
             200: "#666876",
             300: "#191D31",
           },
+          background: {
+            DEFAULT: "#ffffff",
+          },
           danger: "#F75555"
       },
     },
