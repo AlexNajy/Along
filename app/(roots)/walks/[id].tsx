@@ -2,14 +2,14 @@ import React from "react";
 import {Text, View} from "react-native"
 import { useLocalSearchParams } from "expo-router";
 
-const Walks = () => {
+const Walk = () => {
     const {id} = useLocalSearchParams()
     
     return (
         <View>
-            <Text>Walks Page</Text>
+            <Text>Walk Page</Text>
         </View>
     )
 }
 
-export default Walks
+export default Walk

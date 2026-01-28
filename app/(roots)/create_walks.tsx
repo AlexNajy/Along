@@ -8,6 +8,7 @@ export default function createWalks() {
     const [destination, setDestination] = useState("");
     const [minutesInput, setMinutesInput] = useState("");
     const [vibe, setVibe] = useState("chill");
+    const maxTime = 1440;
 
     const canPost =
         start.trim() !== "" &&
@@ -16,7 +17,7 @@ export default function createWalks() {
     const calculateDepartureTime = () => {
         if (!minutesInput.trim()) return new Date();
 
-        const minutes = parseInt(minutesInput, 10);
+        const minutes = parseInt(minutesInput);
         if (isNaN(minutes) || minutes <= 0) return null;
 
         const departureTime = new Date();
@@ -76,9 +77,9 @@ export default function createWalks() {
             end_location: destination,
             start_time: departureTime.toISOString(),
             status: createStatus(),
-          }
+        }
 
-        const { data, error } = await supabase.from("walks").insert([ walk ])
+        const { data, error } = await supabase.from("walks").insert([walk])
 
         if (error) {
             console.log("Error inserting walk:", error.message);
@@ -155,7 +156,15 @@ export default function createWalks() {
                             value={minutesInput}
                             onChangeText={(text) => {
                                 const numericText = text.replace(/[^0-9]/g, '');
-                                setMinutesInput(numericText);
+                                const numericValue = parseInt(numericText);
+                                
+                                if (numericText === '') {
+                                    setMinutesInput('');
+                                } else if (numericValue > maxTime) {
+                                    setMinutesInput(maxTime.toString());
+                                } else {
+                                    setMinutesInput(numericText);
+                                }
                             }}
                             placeholder="Enter minutes from now"
                             placeholderTextColor="#666876"
