@@ -33,7 +33,7 @@ const Map = () => {
             <Pressable
                 onPress={() => router.push("/(roots)/create_walks")}
                 style={styles.button}
-                className="h-14 items-center justify-center rounded-2xl bg-primary-300" >
+                className="h-14 items-center justify-center rounded-2xl bg-teal-700" >
                 <Text className="text-lg font-rubikMedium text-white">
                     Create a walk
                 </Text>
