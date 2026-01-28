@@ -69,10 +69,11 @@ export default function ProfileScreen() {
 
 
   return (
+
     <ScrollView className="flex-1 bg-surface-secondary">
-      
+       {/* Header */}
       <View className="bg-surface px-6 pt-16 pb-8 items-center border-b border-surface-tertiary">
-       
+        {/* Avatar image */}
         <View className="w-24 h-24 rounded-full bg-primary-100 items-center justify-center mb-4 overflow-hidden">
           {avatarUrl ? (
             <Image 
@@ -87,36 +88,75 @@ export default function ProfileScreen() {
           )}
 
         </View>
-
+        {/* Client name */}
         <Text className="text-2xl font-rubikBold text-text-primary mb-1">
             {displayName}
         </Text>
-
+          {/* Client email */}
         <Text className="text-sm font-rubik text-text-secondary">
             {user?.email}
         </Text>
         </View>
 
-        <View className="px-6 py-6">
-            <View className="bg-surface rounded-card p-card mb-4 shadow-card">
-                <Text className="text-lg font-rubikBold text-text-primary ,b-4">
-                    Account Info
+    <View className="px-3 py-6">
+        {/* Account info section */}
+        <View className="bg-surface rounded-card p-card mb-4 shadow-card">
+            <Text className="text-lg font-rubikSemiBold text-text-primary my">
+                Account Info
+            </Text>
+        </View>
+
+        <View className="flex-row justify-between items-center px-1 py-2">
+            <Text className="font-rubik text-text-secondary">Email</Text>
+            <Text className="font-rubikMedium text-text-primary">
+                {user?.email}
+            </Text>
+        </View>
+
+        <View className="h-px bg-surface-tertiary my-2" />
+
+        <View className="flex-row justify-between items-center px-1 py-2">
+            <Text className="font-rubik text-text-secondary">
+                Account ID
+            </Text>
+            <Text className="font-rubik text-text-tertiary text-xs">
+                {user?.id.slice(0, 8)}...
+            </Text>
+        </View>
+    </View>
+
+
+    <View className="px-3 py-4">
+        {/* Action Section */}
+        <View className="bg-surface rounded-card p-card mb-4 shadow-card ">
+                <Text className="text-lg font-rubikSemiBold text-text-primary mb-4">
+                    Actions
                 </Text>
-            </View>
 
+                {/* Edit profla button */}
+                <View className="mb-3">
+                    <Button
+                        title='Edit profile'
+                        onPress={handleEditProfile}
+                        variant='primary'
+                        size='medium'
+                        fullWidth
+                    />
+                </View>
 
-
-        
-
-
-
-
-
-
-
-
-
-      </View>
+                {/* Sign out button */}
+                <Button
+                    title='Sign out'
+                    onPress={handleSignOut}
+                    variant='danger'
+                    size='medium'
+                    loading={signingOut}
+                    fullWidth        
+                /> 
+        </View>
+        {/*Fotter spacing*/}
+        <View className="h-18" />
+    </View>
 
     </ScrollView>
   );

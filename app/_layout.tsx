@@ -1,8 +1,9 @@
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import "./globals.css";
 import { useFonts } from "expo-font";
-import { useEffect } from "react";
+import { Suspense, use, useEffect, useState } from "react";
 import * as SplashScreen from "expo-splash-screen";
+import { supabase } from "@/libs/supabase";
 
 
 export default function RootLayout() {
@@ -15,15 +16,48 @@ export default function RootLayout() {
     "Rubik-SemiBold": require("../assets/fonts/Rubik-SemiBold.ttf"),
   });
 
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
 useEffect(() => {
     if (fontsLoaded) {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
 
-  if (!fontsLoaded) {
-    return null;
-  }
+  useEffect(() => {
 
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+  
+      if (!session) {
+        router.replace("/sign-in");
+      }
+    });
+  
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setIsAuthenticated(!!session);
+  
+        if (!session) {
+          router.replace("/sign-in");
+        } else {
+          router.replace("/(roots)/(tabs)/map");
+        }
+      }
+    );
+  
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+  
+  if (!fontsLoaded||!isAuthenticated === null) {
+    return null; 
+  }
+  
   return <Stack screenOptions ={{headerShown: false}}/>;
 }
+
+
+
+

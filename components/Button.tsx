@@ -25,7 +25,7 @@ export default function Button({
   
 
   const containerStyles = {
-    primary: 'bg-primary-50 active:bg-primary-100',
+    primary: 'bg-primary-100 active:bg-primary-50',
     secondary: 'bg-secondary-50 active:bg-secondary-100',
     outline: 'bg-transparent border-2 border-primary-500 active:bg-primary-50',
     danger: 'bg-red-50 active:bg-red-100',
@@ -34,7 +34,7 @@ export default function Button({
 
 
   const textStyles = {
-    primary: 'text-primary-500',
+    primary: 'text-primary-700',
     secondary: 'text-secondary-500',
     outline: 'text-primary-500',
     danger: 'text-danger',
