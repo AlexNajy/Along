@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { router } from "expo-router";
 import { Text, View, Pressable, StyleSheet } from "react-native";
 import Mapbox from '@rnmapbox/maps';
@@ -7,6 +7,18 @@ import Button from "@/components/Button";
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
 const Map = () => {
+    const [markers, setMarkers] = useState<Array<{ id: string, lng: number, lat: number }>>([]);
+
+    const handleMapPress = (feature: any) => {
+        const coordinates = feature.geometry.coordinates;
+        const newMarker = {
+            id: `marker-${Date.now()}`,
+            lng: coordinates[0],
+            lat: coordinates[1]
+        };
+        setMarkers([...markers, newMarker]);
+    };
+
     return (
         <View style={styles.container}>
             <Mapbox.MapView
@@ -16,6 +28,7 @@ const Map = () => {
                 attributionPosition={{ top: 5, left: 8 }}
                 styleURL={Mapbox.StyleURL.TrafficNight}
                 scaleBarEnabled={false}
+                onPress={handleMapPress}
             >
 
                 <Mapbox.Camera
@@ -49,17 +62,19 @@ const Map = () => {
                     </Mapbox.VectorSource>
 
                 </Mapbox.VectorSource>
+
+                // {markers.map(marker => (
+                    <Mapbox.PointAnnotation
+                        key={marker.id}
+                        id={marker.id}
+                        coordinate={[marker.lng, marker.lat]}
+                    >
+                        <View style={styles.marker}>
+                            <Text style={{ fontSize: 30 }}>Marker</Text>
+                        </View>
+                    </Mapbox.PointAnnotation>
+                ))}
             </Mapbox.MapView>
-
-
-            {/* <Pressable
-                onPress={() => router.push("/(roots)/create_walks")}
-                style={styles.button}
-                className="h-14 items-center justify-center rounded-2xl bg-primary-600" >
-                <Text className="text-lg font-rubikMedium text-white">
-                    Create a walk
-                </Text>
-            </Pressable> */}
 
             <View style={styles.button}>
                 <Button
@@ -88,6 +103,8 @@ const styles = StyleSheet.create({
         bottom: 30,
         alignSelf: "center",
         height: 56,
+    },
+    marker: {
     }
 });
 
