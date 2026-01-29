@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, RefreshControl } from "react-native";
 import { supabase } from "@/libs/supabase";
 
 type Walk = {
@@ -12,30 +12,39 @@ type Walk = {
 const Walks = () => {
     const [walks, setWalks] = useState<Walk[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
 
-    useEffect(() => {
-        const fetchUpcomingWalks = async () => {
-          setLoading(true);
-      
-          const { data, error } = await supabase
+    const fetchUpcomingWalks = async () => {
+        const { data, error } = await supabase
             .from("walks")
             .select("id, start_location, end_location, start_time")
             .eq("status", "upcoming")
             .order("start_time", { ascending: true });
-      
-          if (error) {
+
+        if (error) {
             console.error("Error fetching walks:", error.message);
-          } else {
-            console.log("Fetched walks data:", data); 
-            setWalks(data ?? []); 
-          }
-      
-          setLoading(false);
+        } else {
+            console.log("Fetched walks data:", data);
+            setWalks(data ?? []);
+        }
+    };
+
+    useEffect(() => {
+        const loadInitialData = async () => {
+            setLoading(true);
+            await fetchUpcomingWalks();
+            setLoading(false);
         };
-      
-        fetchUpcomingWalks();
-      }, []);
-      
+
+        loadInitialData();
+    }, []);
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchUpcomingWalks();
+        setRefreshing(false);
+    };
+
     if (loading) return <Text> Loading... </Text>;
 
     return (
@@ -48,7 +57,7 @@ const Walks = () => {
                 renderItem={({ item }) => (
                     <View className="p-3 mb-5 bg-surface rounded-2xl">
                         <Text>
-                            {item.start_location}, {item.end_location}
+                            {item.start_location} → {item.end_location}
                         </Text>
                         <Text>
                             {new Date(item.start_time).toLocaleString()}
@@ -57,6 +66,9 @@ const Walks = () => {
                 )}
                 ListEmptyComponent={
                     <Text className="text-center opacity-60 mt-4">No upcoming walks</Text>
+                }
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
             />
         </View>
