@@ -4,8 +4,8 @@ import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
-  size?: 'small' | 'medium' | 'large';
+  variant?: 'primary' | 'solid' | 'secondary' | 'outline' | 'danger' | 'ghost';
+  size?: 'small' | 'medium' | 'large' | 'solid';
   disabled?: boolean;
   loading?: boolean;
   icon?: React.ReactNode;
@@ -26,6 +26,7 @@ export default function Button({
 
   const containerStyles = {
     primary: 'bg-primary-100 active:bg-primary-50',
+    solid: 'bg-primary-600 active:bg-primary-50',
     secondary: 'bg-secondary-50 active:bg-secondary-100',
     outline: 'bg-transparent border-2 border-primary-500 active:bg-primary-50',
     danger: 'bg-red-50 active:bg-red-100',
@@ -36,6 +37,7 @@ export default function Button({
   const textStyles = {
     primary: 'text-primary-700',
     secondary: 'text-secondary-500',
+    solid: 'text-surface',
     outline: 'text-primary-500',
     danger: 'text-danger',
     ghost: 'text-primary-500',
@@ -46,17 +48,19 @@ export default function Button({
     small: 'px-4 py-2',
     medium: 'px-6 py-3',
     large: 'px-8 py-4',
+    solid: 'px-10 py-4'
   };
 
   const textSizeStyles = {
     small: 'text-sm',
     medium: 'text-base',
     large: 'text-lg',
+    solid: 'text-lg'
   };
 
 
   const disabledStyle = disabled || loading ? 'opacity-50' : '';
-  const widthStyle = fullWidth ? 'w-full' : '';
+  const widthStyle = fullWidth ? 'w-full' : 'w-64';
 
   return (
     <TouchableOpacity

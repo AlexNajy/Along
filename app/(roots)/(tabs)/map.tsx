@@ -2,6 +2,7 @@ import React from "react";
 import { router } from "expo-router";
 import { Text, View, Pressable, StyleSheet } from "react-native";
 import Mapbox from '@rnmapbox/maps';
+import Button from "@/components/Button";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
@@ -51,14 +52,25 @@ const Map = () => {
             </Mapbox.MapView>
 
 
-            <Pressable
+            {/* <Pressable
                 onPress={() => router.push("/(roots)/create_walks")}
                 style={styles.button}
-                className="h-14 items-center justify-center rounded-2xl bg-teal-700" >
+                className="h-14 items-center justify-center rounded-2xl bg-primary-600" >
                 <Text className="text-lg font-rubikMedium text-white">
                     Create a walk
                 </Text>
-            </Pressable>
+            </Pressable> */}
+
+            <View style={styles.button}>
+                <Button
+                    title="Create Walk"
+                    onPress={() => router.push("/(roots)/create_walks")}
+                    variant="solid"
+                    size="solid"
+                    fullWidth={false}
+                />
+            </View>
+
         </View>
     );
 };
@@ -75,7 +87,6 @@ const styles = StyleSheet.create({
         position: "absolute",
         bottom: 30,
         alignSelf: "center",
-        width: 200,
         height: 56,
     }
 });
