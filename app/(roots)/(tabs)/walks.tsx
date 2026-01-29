@@ -1,50 +1,66 @@
-import React, { useState, useEffect } from "react";
-import { Text, View, FlatList } from "react-native"
+import React, { useEffect, useState } from "react";
+import { View, Text, FlatList, ActivityIndicator } from "react-native";
 import { supabase } from "@/libs/supabase";
 
-type DemoRow = {
-    id: number;
-    name: string;
-  };
+type Walk = {
+    id: string;
+    start_location: string;
+    end_location: string;
+    start_time: string;
+};
 
 const Walks = () => {
-    const [names, setNames] = useState<DemoRow[]>([]);
+    const [walks, setWalks] = useState<Walk[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const getNames = async () => {
-            try {
-                const { data: names, error } = await supabase.from('demo').select('*');
-
-                if (error) {
-                    console.error('Error fetching names:', error.message);
-                    return;
-                }
-
-                if (names && names.length > 0) {
-                    setNames(names);
-                }
-            } catch (error) {
-                if (error instanceof Error) {
-                    console.error('Error fetching names:', error.message);
-                } else {
-                    console.error('Error fetching names:', error);
-                }
-            }
+        const fetchUpcomingWalks = async () => {
+          setLoading(true);
+      
+          const { data, error } = await supabase
+            .from("walks")
+            .select("id, start_location, end_location, start_time")
+            .eq("status", "upcoming")
+            .order("start_time", { ascending: true });
+      
+          if (error) {
+            console.error("Error fetching walks:", error.message);
+          } else {
+            console.log("Fetched walks data:", data); 
+            setWalks(data ?? []); 
+          }
+      
+          setLoading(false);
         };
+      
+        fetchUpcomingWalks();
+      }, []);
+      
+    if (loading) return <Text> Loading... </Text>;
 
-        getNames();
-
-    }, []);
     return (
-        <View className="flex-1 justify-center items-center">
-          <Text className="font-rubikBold">Names</Text>
-          <FlatList
-            data={names}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => <Text key={item.id}>{item.name}</Text>}
-          />
-        </View>
-      );
-}
+        <View className="px-4">
+            <Text className="font-rubikBold text-lg mb-4">Upcoming Walks</Text>
 
-export default Walks
+            <FlatList
+                data={walks}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                    <View className="p-3 mb-5 bg-surface rounded-2xl">
+                        <Text>
+                            {item.start_location}, {item.end_location}
+                        </Text>
+                        <Text>
+                            {new Date(item.start_time).toLocaleString()}
+                        </Text>
+                    </View>
+                )}
+                ListEmptyComponent={
+                    <Text className="text-center opacity-60 mt-4">No upcoming walks</Text>
+                }
+            />
+        </View>
+    );
+};
+
+export default Walks;
