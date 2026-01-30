@@ -1,32 +1,31 @@
-import React, { useState , useEffect} from "react";
+import React, { useState, useEffect } from "react";
 import { router } from "expo-router";
 import { Text, View, Pressable, StyleSheet } from "react-native";
 import Mapbox from '@rnmapbox/maps';
 import Button from "@/components/Button";
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
 const Map = () => {
-    const [markers, setMarkers] = useState<Array<{ id: string, lng: number, lat: number }>>([]);
+    const [markers, setMarkers] = useState<Array<{ id: string, lng: number, lat: number }>>([])
 
     const handleMapPress = (point: any) => {
-        const coordinates = point.geometry.coordinates;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        const coordinates = point.geometry.coordinates
         const newMarker = {
             id: `marker-${Date.now()}`,
             lng: coordinates[0],
             lat: coordinates[1]
         };
-        setMarkers([...markers, newMarker]);
-        console.log(markers) 
+        setMarkers([...markers, newMarker])
     };
 
     return (
         <View style={styles.container}>
             <Mapbox.MapView
                 style={styles.map}
-                // logoEnabled={true} // legally required don't change
-                // attributionEnabled={true} // legally required don't change
                 attributionPosition={{ top: 5, left: 8 }}
                 styleURL={Mapbox.StyleURL.Street}
                 scaleBarEnabled={false}
@@ -48,24 +47,21 @@ const Map = () => {
                 />
 
                 <Mapbox.VectorSource id="mapbox-buildings" url="mapbox://mapbox.mapbox-streets-v8">
-                    <Mapbox.VectorSource id="mapbox-buildings" url="mapbox://mapbox.mapbox-streets-v8">
-                        <Mapbox.FillExtrusionLayer
-                            id="3d-buildings"
-                            sourceLayerID="building"
-                            minZoomLevel={12}  // required
-                            maxZoomLevel={22}  // required
-                            style={{
-                                fillExtrusionHeight: ['get', 'height'],
-                                fillExtrusionBase: ['get', 'min_height'],
-                                fillExtrusionColor: '#aaa',
-                                fillExtrusionOpacity: 0.6,
-                            }}
-                        />
-                    </Mapbox.VectorSource>
-
+                    <Mapbox.FillExtrusionLayer
+                        id="3d-buildings"
+                        sourceLayerID="building"
+                        minZoomLevel={12}
+                        maxZoomLevel={22}
+                        style={{
+                            fillExtrusionHeight: ['get', 'height'],
+                            fillExtrusionBase: ['get', 'min_height'],
+                            fillExtrusionColor: '#aaa',
+                            fillExtrusionOpacity: 0.6,
+                        }}
+                    />
                 </Mapbox.VectorSource>
 
-                // {markers.map(marker => (
+                {markers.map(marker => (
                     <Mapbox.PointAnnotation
                         key={marker.id}
                         id={marker.id}
@@ -73,7 +69,7 @@ const Map = () => {
                         anchor={{ x: 0.5, y: 1 }}
                     >
                         <View style={styles.marker}>
-                            <Ionicons name="location" color={"teal"} size={32}/>
+                            <Ionicons name="location" color={"teal"} size={48} />
                         </View>
                     </Mapbox.PointAnnotation>
                 ))}
