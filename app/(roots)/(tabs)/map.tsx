@@ -1,22 +1,24 @@
-import React, { useState } from "react";
+import React, { useState , useEffect} from "react";
 import { router } from "expo-router";
 import { Text, View, Pressable, StyleSheet } from "react-native";
 import Mapbox from '@rnmapbox/maps';
 import Button from "@/components/Button";
+import { Ionicons } from '@expo/vector-icons';
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
 const Map = () => {
     const [markers, setMarkers] = useState<Array<{ id: string, lng: number, lat: number }>>([]);
 
-    const handleMapPress = (feature: any) => {
-        const coordinates = feature.geometry.coordinates;
+    const handleMapPress = (point: any) => {
+        const coordinates = point.geometry.coordinates;
         const newMarker = {
             id: `marker-${Date.now()}`,
             lng: coordinates[0],
             lat: coordinates[1]
         };
         setMarkers([...markers, newMarker]);
+        console.log(markers) 
     };
 
     return (
@@ -26,7 +28,7 @@ const Map = () => {
                 // logoEnabled={true} // legally required don't change
                 // attributionEnabled={true} // legally required don't change
                 attributionPosition={{ top: 5, left: 8 }}
-                styleURL={Mapbox.StyleURL.TrafficNight}
+                styleURL={Mapbox.StyleURL.Street}
                 scaleBarEnabled={false}
                 onPress={handleMapPress}
             >
@@ -68,9 +70,10 @@ const Map = () => {
                         key={marker.id}
                         id={marker.id}
                         coordinate={[marker.lng, marker.lat]}
+                        anchor={{ x: 0.5, y: 1 }}
                     >
                         <View style={styles.marker}>
-                            <Text style={{ fontSize: 30 }}>Marker</Text>
+                            <Ionicons name="location" color={"teal"} size={32}/>
                         </View>
                     </Mapbox.PointAnnotation>
                 ))}
