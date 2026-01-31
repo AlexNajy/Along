@@ -6,7 +6,7 @@ import Button from "@/components/Button";
 import { colors } from "@/constants/colors";
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { UBC_BOUNDARY, UBC_MAX_BOUNDS } from "@/constants/boundaries";
+import { UBC_BOUNDARY, UBC_CENTER_COORDINATE, UBC_MAX_BOUNDS } from "@/constants/boundaries";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
@@ -70,10 +70,11 @@ const Map = () => {
                 <Mapbox.Camera
                     minZoomLevel={12}
                     maxZoomLevel={18}
+                    zoomLevel={15}
                     animationMode="flyTo"
                     animationDuration={2000}
-                    bounds={UBC_MAX_BOUNDS}
                     maxBounds={UBC_MAX_BOUNDS}
+                    centerCoordinate={UBC_CENTER_COORDINATE}
                     pitch={30}
                 />
 

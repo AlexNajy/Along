@@ -5,6 +5,8 @@ type CameraBounds = {
     sw: [number, number];
 };
 
+export const UBC_CENTER_COORDINATE: [number, number] = [-123.252794, 49.264789];
+
 export const UBC_MAX_BOUNDS: CameraBounds = {
     ne: [-123.2152312, 49.2916922],
     sw: [-123.2755716, 49.2321469],
