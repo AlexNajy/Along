@@ -6,27 +6,37 @@ import Button from "@/components/Button";
 import { colors } from "@/constants/colors";
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { UBC_BOUNDARY, UBC_MAX_BOUNDS } from "@/constants/boundaries";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
-
-const UBC_BOUNDS = {
-    ne: [-123.2254, 49.2825],  // top-right 
-    sw: [-123.2676, 49.2437],  // bottom-left
-  };  
 
 const Map = () => {
     const [markers, setMarkers] = useState<Array<{ id: string, lng: number, lat: number }>>([])
 
+    const isPointInPolygon = (lng: number, lat: number) => {
+        const coords = UBC_BOUNDARY.geometry.coordinates[0];
+        let inside = false;
+    
+        for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+            const xi = coords[i][0], yi = coords[i][1];
+            const xj = coords[j][0], yj = coords[j][1];
+    
+            const intersect = ((yi > lat) !== (yj > lat))
+                && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+    
+        return inside;
+    };
+
     const handleMapPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates
 
-        if (
-            lng < UBC_BOUNDS.sw[0] || lng > UBC_BOUNDS.ne[0] ||
-            lat < UBC_BOUNDS.sw[1] || lat > UBC_BOUNDS.ne[1]
-        ) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            console.log("Marker outside UBC bounds, ignoring.");
-            return; 
+        if (!isPointInPolygon(lng, lat)) {
+            Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Error
+              )
+            return;
         }
 
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -40,7 +50,7 @@ const Map = () => {
     };
 
     const handleMarkerPress = (id: string) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
         setMarkers(prev => prev.filter(marker => marker.id !== id));
     };
 
@@ -60,16 +70,23 @@ const Map = () => {
                 <Mapbox.Camera
                     minZoomLevel={12}
                     maxZoomLevel={18}
-                    zoomLevel={14}
-                    centerCoordinate={[-123.2460, 49.2606]}
                     animationMode="flyTo"
                     animationDuration={2000}
-                    maxBounds={{
-                        ne: [-123.2254, 49.2825],
-                        sw: [-123.2676, 49.2437],
-                    }}
+                    bounds={UBC_MAX_BOUNDS}
+                    maxBounds={UBC_MAX_BOUNDS}
                     pitch={30}
                 />
+
+                <Mapbox.ShapeSource id="ubc-boundary" shape={UBC_BOUNDARY}>
+                    <Mapbox.LineLayer
+                        id="ubc-boundary-line"
+                        style={{
+                            lineColor: colors.ubc.secondary,
+                            lineWidth: 3,
+                            lineDasharray: [4, 2],
+                        }}
+                    />
+                </Mapbox.ShapeSource>
 
                 <Mapbox.VectorSource id="mapbox-buildings" url="mapbox://mapbox.mapbox-streets-v8">
                     <Mapbox.FillExtrusionLayer

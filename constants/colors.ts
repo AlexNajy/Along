@@ -43,6 +43,11 @@ export const colors = {
       200: "#666876",
       300: "#191D31",
     },
+
+    ubc: {
+        primary: "#002145",
+        secondary: "#0055B7"
+    },
   
     danger: "#F75555",
   };
