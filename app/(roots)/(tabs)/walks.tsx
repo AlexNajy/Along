@@ -13,6 +13,7 @@ const Walks = () => {
     const [walks, setWalks] = useState<Walk[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    
 
     const fetchUpcomingWalks = async () => {
         const { data, error } = await supabase

@@ -29,7 +29,7 @@ export default function Button({
     solid: 'bg-primary-600 active:bg-primary-50',
     secondary: 'bg-secondary-50 active:bg-secondary-100',
     outline: 'bg-transparent border-2 border-primary-500 active:bg-primary-50',
-    danger: 'bg-red-50 active:bg-red-100',
+    danger: 'bg-transparent active:bg-red-100 border-2 border-danger active:bg-danger',
     ghost: 'bg-transparent active:bg-primary-50',
   };
 
