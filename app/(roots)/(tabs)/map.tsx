@@ -11,50 +11,57 @@ import { UBC_BOUNDARY, UBC_CENTER_COORDINATE, UBC_MAX_BOUNDS } from "@/constants
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
 const Map = () => {
-    const [markers, setMarkers] = useState<Array<{ id: string, lng: number, lat: number }>>([])
+    const [startMarker, setStartMarker] = useState<{ lng: number, lat: number } | null>(null);
+    const [endMarker, setEndMarker] = useState<{ lng: number, lat: number } | null>(null);
+
+    const handleMapPress = (point: any) => {
+        const [lng, lat] = point.geometry.coordinates;
+
+        if (!isPointInPolygon(lng, lat)) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            return;
+        }
+
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
+
+        if (!startMarker) {
+            setStartMarker({ lng, lat });
+        } else if (!endMarker) {
+            setEndMarker({ lng, lat });
+        } else {
+            setEndMarker({ lng, lat });
+        }
+    };
+
+    const handleMarkerPress = (type: 'start' | 'end') => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (type === 'start') {
+            if (endMarker) {
+                setStartMarker(endMarker)
+                setEndMarker(null)
+            } else {
+                setStartMarker(null)
+            }
+        } else {
+            setEndMarker(null);
+        }
+    };
 
     const isPointInPolygon = (lng: number, lat: number) => {
         const coords = UBC_BOUNDARY.geometry.coordinates[0];
         let inside = false;
-    
+
         for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
             const xi = coords[i][0], yi = coords[i][1];
             const xj = coords[j][0], yj = coords[j][1];
-    
+
             const intersect = ((yi > lat) !== (yj > lat))
                 && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
             if (intersect) inside = !inside;
         }
-    
+
         return inside;
     };
-
-    const handleMapPress = (point: any) => {
-        const [lng, lat] = point.geometry.coordinates
-
-        if (!isPointInPolygon(lng, lat)) {
-            Haptics.notificationAsync(
-                Haptics.NotificationFeedbackType.Error
-              )
-            return;
-        }
-
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-
-        const newMarker = {
-            id: `marker-${Date.now()}`,
-            lng,
-            lat,
-        };
-        setMarkers([...markers, newMarker])
-    };
-
-    const handleMarkerPress = (id: string) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
-        setMarkers(prev => prev.filter(marker => marker.id !== id));
-    };
-
-    console.log({ markers })
 
     return (
         <View style={styles.container}>
@@ -104,25 +111,30 @@ const Map = () => {
                     />
                 </Mapbox.VectorSource>
 
-                {markers.map((marker, index) => {
-                    const color = index === 0
-                        ? colors.secondary[700]
-                        : colors.primary[700];
-
-                    return (
-                        <Mapbox.PointAnnotation
-                            key={marker.id}
-                            id={marker.id}
-                            coordinate={[marker.lng, marker.lat]}
-                            anchor={{ x: 0.5, y: 1 }}
-                            onSelected={() => handleMarkerPress(marker.id)}
-                        >
-                            <View style={styles.marker}>
-                                <Ionicons name="location" color={color} size={48} />
-                            </View>
-                        </Mapbox.PointAnnotation>
-                    );
-                })}
+                {startMarker && (
+                    <Mapbox.PointAnnotation
+                        id="start-marker"
+                        coordinate={[startMarker.lng, startMarker.lat]}
+                        anchor={{ x: 0.5, y: 1 }}
+                        onSelected={() => handleMarkerPress('start')}
+                    >
+                        <View style={styles.marker}>
+                            <Ionicons name="location" color={colors.secondary[500]} size={48} />
+                        </View>
+                    </Mapbox.PointAnnotation>
+                )}
+                {endMarker && (
+                    <Mapbox.PointAnnotation
+                        id="end-marker"
+                        coordinate={[endMarker.lng, endMarker.lat]}
+                        anchor={{ x: 0.5, y: 1 }}
+                        onSelected={() => handleMarkerPress('end')}
+                    >
+                        <View style={styles.marker}>
+                            <Ionicons name="location" color={colors.primary[500]} size={48} />
+                        </View>
+                    </Mapbox.PointAnnotation>
+                )}
             </Mapbox.MapView>
 
             <View style={styles.button}>
