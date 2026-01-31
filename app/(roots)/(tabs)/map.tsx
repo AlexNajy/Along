@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { router } from "expo-router";
-import { Text, View, Pressable, StyleSheet, Animated } from "react-native";
+import { Text, View, Pressable, StyleSheet } from "react-native";
 import Mapbox from '@rnmapbox/maps';
 import mbxDirections from '@mapbox/mapbox-sdk/services/directions';
 import Button from "@/components/Button";
@@ -19,16 +19,6 @@ const Map = () => {
     const [startMarker, setStartMarker] = useState<{ lng: number, lat: number } | null>(null);
     const [endMarker, setEndMarker] = useState<{ lng: number, lat: number } | null>(null);
     const [route, setRoute] = useState<any>(null);
-    const buttonTranslateY = useRef(new Animated.Value(100)).current;
-
-    useEffect(() => {
-        Animated.spring(buttonTranslateY, {
-            toValue: route ? 0 : 100,
-            useNativeDriver: true,
-            tension: 50,
-            friction: 7,
-        }).start();
-    }, [route]);
 
     const fetchRoute = async () => {
         if (!startMarker || !endMarker) {
@@ -116,6 +106,7 @@ const Map = () => {
                 onPress={handleMapPress}
                 pitchEnabled={false}
             >
+
                 <Mapbox.Camera
                     minZoomLevel={12}
                     maxZoomLevel={18}
@@ -199,7 +190,7 @@ const Map = () => {
             </Mapbox.MapView>
 
             {route && (
-                <Animated.View style={[styles.button, { transform: [{ translateY: buttonTranslateY }] }]}>
+                <View style={styles.button}>
                     <Button
                         title="Create Walk"
                         onPress={() => router.push("/(roots)/create_walks")}
@@ -207,8 +198,9 @@ const Map = () => {
                         size="solid"
                         fullWidth={false}
                     />
-                </Animated.View>
+                </View>
             )}
+
         </View>
     );
 };
