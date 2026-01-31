@@ -9,19 +9,42 @@ import * as Haptics from 'expo-haptics';
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
+const UBC_BOUNDS = {
+    ne: [-123.2254, 49.2825],  // top-right 
+    sw: [-123.2676, 49.2437],  // bottom-left
+  };  
+
 const Map = () => {
     const [markers, setMarkers] = useState<Array<{ id: string, lng: number, lat: number }>>([])
 
     const handleMapPress = (point: any) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-        const coordinates = point.geometry.coordinates
+        const [lng, lat] = point.geometry.coordinates
+
+        if (
+            lng < UBC_BOUNDS.sw[0] || lng > UBC_BOUNDS.ne[0] ||
+            lat < UBC_BOUNDS.sw[1] || lat > UBC_BOUNDS.ne[1]
+        ) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            console.log("Marker outside UBC bounds, ignoring.");
+            return; 
+        }
+
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+
         const newMarker = {
             id: `marker-${Date.now()}`,
-            lng: coordinates[0],
-            lat: coordinates[1]
+            lng,
+            lat,
         };
         setMarkers([...markers, newMarker])
     };
+
+    const handleMarkerPress = (id: string) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setMarkers(prev => prev.filter(marker => marker.id !== id));
+    };
+
+    console.log({ markers })
 
     return (
         <View style={styles.container}>
@@ -31,6 +54,7 @@ const Map = () => {
                 styleURL={Mapbox.StyleURL.Street}
                 scaleBarEnabled={false}
                 onPress={handleMapPress}
+                pitchEnabled={false}
             >
 
                 <Mapbox.Camera
@@ -62,18 +86,25 @@ const Map = () => {
                     />
                 </Mapbox.VectorSource>
 
-                {markers.map(marker => (
-                    <Mapbox.PointAnnotation
-                        key={marker.id}
-                        id={marker.id}
-                        coordinate={[marker.lng, marker.lat]}
-                        anchor={{ x: 0.5, y: 1 }}
-                    >
-                        <View style={styles.marker}>
-                            <Ionicons name="location"  color={colors.primary[700]} size={48} />
-                        </View>
-                    </Mapbox.PointAnnotation>
-                ))}
+                {markers.map((marker, index) => {
+                    const color = index === 0
+                        ? colors.secondary[700]
+                        : colors.primary[700];
+
+                    return (
+                        <Mapbox.PointAnnotation
+                            key={marker.id}
+                            id={marker.id}
+                            coordinate={[marker.lng, marker.lat]}
+                            anchor={{ x: 0.5, y: 1 }}
+                            onSelected={() => handleMarkerPress(marker.id)}
+                        >
+                            <View style={styles.marker}>
+                                <Ionicons name="location" color={color} size={48} />
+                            </View>
+                        </Mapbox.PointAnnotation>
+                    );
+                })}
             </Mapbox.MapView>
 
             <View style={styles.button}>
