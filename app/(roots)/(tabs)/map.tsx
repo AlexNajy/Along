@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Text, View, Pressable, StyleSheet } from "react-native";
 import Mapbox from '@rnmapbox/maps';
 import Button from "@/components/Button";
+import { colors } from "@/constants/colors";
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
@@ -69,7 +70,7 @@ const Map = () => {
                         anchor={{ x: 0.5, y: 1 }}
                     >
                         <View style={styles.marker}>
-                            <Ionicons name="location" color={"teal"} size={48} />
+                            <Ionicons name="location"  color={colors.primary[700]} size={48} />
                         </View>
                     </Mapbox.PointAnnotation>
                 ))}
