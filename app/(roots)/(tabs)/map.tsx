@@ -16,12 +16,13 @@ const directionsClient = mbxDirections({
 });
 
 const Map = () => {
+    const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
     const [startMarker, setStartMarker] = useState<{ lng: number, lat: number } | null>(null);
     const [endMarker, setEndMarker] = useState<{ lng: number, lat: number } | null>(null);
     const [route, setRoute] = useState<any>(null);
 
     const fetchRoute = async () => {
-        if (!startMarker || !endMarker) {
+        if (!endMarker || (!startMarker && !userLocation)) {
             setRoute(null);
             return;
         }
@@ -29,10 +30,15 @@ const Map = () => {
         try {
             const response = await directionsClient.getDirections({
                 profile: 'walking',
-                waypoints: [
-                    { coordinates: [startMarker.lng, startMarker.lat] },
-                    { coordinates: [endMarker.lng, endMarker.lat] }
-                ],
+                waypoints: startMarker
+                    ? [
+                        { coordinates: [startMarker.lng, startMarker.lat] },
+                        { coordinates: [endMarker.lng, endMarker.lat] }
+                    ]
+                    : [
+                        { coordinates: userLocation! },
+                        { coordinates: [endMarker.lng, endMarker.lat] }
+                    ],
                 geometries: 'geojson'
             }).send();
 
@@ -45,7 +51,7 @@ const Map = () => {
 
     useEffect(() => {
         fetchRoute();
-    }, [startMarker, endMarker]);
+    }, [startMarker, endMarker, userLocation]);
 
     const handleMapPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
@@ -55,30 +61,34 @@ const Map = () => {
             return;
         }
 
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-        if (!startMarker) {
-            setStartMarker({ lng, lat });
-        } else if (!endMarker) {
-            setEndMarker({ lng, lat });
-        } else {
-            setEndMarker({ lng, lat });
+        setEndMarker({ lng, lat });
+    };
+
+    const handleMapLongPress = (point: any) => {
+        const [lng, lat] = point.geometry.coordinates;
+
+        if (!isPointInPolygon(lng, lat)) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            return;
         }
+
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setStartMarker({ lng, lat });
     };
 
     const handleMarkerPress = (type: 'start' | 'end') => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         if (type === 'start') {
-            if (endMarker) {
-                setStartMarker(endMarker)
-                setEndMarker(null)
-            } else {
-                setStartMarker(null)
-            }
+            setStartMarker(null)
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         } else {
-            setEndMarker(null);
+            setEndMarker(startMarker)
+            setStartMarker(null)
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
         }
     };
+
 
     const isPointInPolygon = (lng: number, lat: number) => {
         const coords = UBC_BOUNDARY.geometry.coordinates[0];
@@ -104,6 +114,7 @@ const Map = () => {
                 styleURL={Mapbox.StyleURL.Street}
                 scaleBarEnabled={false}
                 onPress={handleMapPress}
+                onLongPress={handleMapLongPress}
                 pitchEnabled={false}
             >
 
@@ -121,6 +132,9 @@ const Map = () => {
                 <Mapbox.UserLocation
                     visible={true}
                     showsUserHeadingIndicator={true}
+                    onUpdate={(location) => {
+                        setUserLocation([location.coords.longitude, location.coords.latitude]);
+                    }}
                 />
 
                 <Mapbox.ShapeSource id="ubc-boundary" shape={UBC_BOUNDARY}>
@@ -129,7 +143,6 @@ const Map = () => {
                         style={{
                             lineColor: colors.ubc.secondary,
                             lineWidth: 3,
-                            lineDasharray: [4, 2],
                         }}
                     />
                 </Mapbox.ShapeSource>
@@ -158,6 +171,7 @@ const Map = () => {
                                 lineWidth: 4,
                                 lineCap: 'round',
                                 lineJoin: 'round',
+                                lineDasharray: [2, 4],
                             }}
                         />
                     </Mapbox.ShapeSource>
