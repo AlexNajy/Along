@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, RefreshControl, StyleSheet } from "react-native";
 import { supabase } from "@/libs/supabase";
 import { useTheme } from "@/context/ThemeContext";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type Walk = {
     id: string;
@@ -26,7 +27,6 @@ const Walks = () => {
         if (error) {
             console.error("Error fetching walks:", error.message);
         } else {
-            console.log("Fetched walks data:", data);
             setWalks(data ?? []);
         }
     };
@@ -49,14 +49,20 @@ const Walks = () => {
 
     if (loading) {
         return (
-            <View style={[styles.container, { backgroundColor: colors.surface.secondary }]}>
+            <SafeAreaView 
+                style={[styles.container, { backgroundColor: colors.surface.secondary }]} 
+                edges={['top']}
+            >
                 <Text style={{ color: colors.text.secondary }}>Loading...</Text>
-            </View>
+            </SafeAreaView>
         );
     }
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.surface.secondary }]}>
+        <SafeAreaView 
+            style={[styles.container, { backgroundColor: colors.surface.secondary }]} 
+            edges={['top']}
+        >
             <Text style={[styles.title, { color: colors.text.primary }]}>
                 Upcoming Walks
             </Text>
@@ -80,14 +86,14 @@ const Walks = () => {
                     </Text>
                 }
                 refreshControl={
-                    <RefreshControl 
-                        refreshing={refreshing} 
+                    <RefreshControl
+                        refreshing={refreshing}
                         onRefresh={onRefresh}
                         tintColor={colors.primary[500]}
                     />
                 }
             />
-        </View>
+        </SafeAreaView>
     );
 };
 

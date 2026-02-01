@@ -110,7 +110,7 @@ const Map = () => {
             <Mapbox.MapView
                 style={styles.map}
                 attributionPosition={{ top: 5, left: 8 }}
-                styleURL={isDark ? Mapbox.StyleURL.Dark : Mapbox.StyleURL.Light}
+                styleURL={isDark ? Mapbox.StyleURL.Street : Mapbox.StyleURL.Street}
                 scaleBarEnabled={false}
                 onPress={handleMapPress}
                 onLongPress={handleMapLongPress}
