@@ -1,4 +1,4 @@
-import onboarding from "@/assets/images/onboarding4.png";
+import onboarding from "@/assets/images/onboarding5.png";
 
 export default {
   onboarding,
