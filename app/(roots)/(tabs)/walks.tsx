@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, RefreshControl } from "react-native";
+import { View, Text, FlatList, RefreshControl, StyleSheet } from "react-native";
 import { supabase } from "@/libs/supabase";
+import { useTheme } from "@/context/ThemeContext";
 
 type Walk = {
     id: string;
@@ -10,10 +11,10 @@ type Walk = {
 };
 
 const Walks = () => {
+    const { colors } = useTheme();
     const [walks, setWalks] = useState<Walk[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    
 
     const fetchUpcomingWalks = async () => {
         const { data, error } = await supabase
@@ -46,34 +47,71 @@ const Walks = () => {
         setRefreshing(false);
     };
 
-    if (loading) return <Text> Loading... </Text>;
+    if (loading) {
+        return (
+            <View style={[styles.container, { backgroundColor: colors.surface.secondary }]}>
+                <Text style={{ color: colors.text.secondary }}>Loading...</Text>
+            </View>
+        );
+    }
 
     return (
-        <View className="px-4">
-            <Text className="font-rubikBold text-lg mb-4">Upcoming Walks</Text>
+        <View style={[styles.container, { backgroundColor: colors.surface.secondary }]}>
+            <Text style={[styles.title, { color: colors.text.primary }]}>
+                Upcoming Walks
+            </Text>
 
             <FlatList
                 data={walks}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                    <View className="p-3 mb-5 bg-surface rounded-2xl">
-                        <Text>
+                    <View style={[styles.walkCard, { backgroundColor: colors.surface.primary }]}>
+                        <Text style={{ color: colors.text.primary }}>
                             {item.start_location} → {item.end_location}
                         </Text>
-                        <Text>
+                        <Text style={{ color: colors.text.secondary }}>
                             {new Date(item.start_time).toLocaleString()}
                         </Text>
                     </View>
                 )}
                 ListEmptyComponent={
-                    <Text className="text-center opacity-60 mt-4">No upcoming walks</Text>
+                    <Text style={[styles.emptyText, { color: colors.text.tertiary }]}>
+                        No upcoming walks
+                    </Text>
                 }
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    <RefreshControl 
+                        refreshing={refreshing} 
+                        onRefresh={onRefresh}
+                        tintColor={colors.primary[500]}
+                    />
                 }
             />
         </View>
     );
 };
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        paddingHorizontal: 16,
+    },
+    title: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 16,
+        marginTop: 16,
+    },
+    walkCard: {
+        padding: 12,
+        marginBottom: 20,
+        borderRadius: 16,
+    },
+    emptyText: {
+        textAlign: 'center',
+        opacity: 0.6,
+        marginTop: 16,
+    },
+});
 
 export default Walks;

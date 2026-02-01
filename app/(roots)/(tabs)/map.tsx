@@ -4,7 +4,7 @@ import { Text, View, Pressable, StyleSheet } from "react-native";
 import Mapbox from '@rnmapbox/maps';
 import mbxDirections from '@mapbox/mapbox-sdk/services/directions';
 import Button from "@/components/Button";
-import { colors } from "@/constants/colors";
+import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { UBC_BOUNDARY, UBC_CENTER_COORDINATE, UBC_MAX_BOUNDS } from "@/constants/boundaries";
@@ -16,6 +16,7 @@ const directionsClient = mbxDirections({
 });
 
 const Map = () => {
+    const { colors, isDark } = useTheme();
     const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
     const [startMarker, setStartMarker] = useState<{ lng: number, lat: number } | null>(null);
     const [endMarker, setEndMarker] = useState<{ lng: number, lat: number } | null>(null);
@@ -62,7 +63,6 @@ const Map = () => {
         }
 
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
         setEndMarker({ lng, lat });
     };
 
@@ -89,7 +89,6 @@ const Map = () => {
         }
     };
 
-
     const isPointInPolygon = (lng: number, lat: number) => {
         const coords = UBC_BOUNDARY.geometry.coordinates[0];
         let inside = false;
@@ -111,13 +110,12 @@ const Map = () => {
             <Mapbox.MapView
                 style={styles.map}
                 attributionPosition={{ top: 5, left: 8 }}
-                styleURL={Mapbox.StyleURL.Street}
+                styleURL={isDark ? Mapbox.StyleURL.Dark : Mapbox.StyleURL.Light}
                 scaleBarEnabled={false}
                 onPress={handleMapPress}
                 onLongPress={handleMapLongPress}
                 pitchEnabled={false}
             >
-
                 <Mapbox.Camera
                     minZoomLevel={12}
                     maxZoomLevel={18}
@@ -143,6 +141,7 @@ const Map = () => {
                         style={{
                             lineColor: colors.ubc.secondary,
                             lineWidth: 3,
+                            lineDasharray: [4, 2],
                         }}
                     />
                 </Mapbox.ShapeSource>
@@ -156,7 +155,7 @@ const Map = () => {
                         style={{
                             fillExtrusionHeight: ['get', 'height'],
                             fillExtrusionBase: ['get', 'min_height'],
-                            fillExtrusionColor: '#aaa',
+                            fillExtrusionColor: isDark ? '#555' : '#aaa',
                             fillExtrusionOpacity: 0.6,
                         }}
                     />
@@ -171,7 +170,6 @@ const Map = () => {
                                 lineWidth: 4,
                                 lineCap: 'round',
                                 lineJoin: 'round',
-                                lineDasharray: [2, 4],
                             }}
                         />
                     </Mapbox.ShapeSource>
@@ -214,7 +212,6 @@ const Map = () => {
                     />
                 </View>
             )}
-
         </View>
     );
 };

@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { supabase } from '@/libs/supabase';
 import Button from '@/components/Button';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/context/ThemeContext';
 
 interface UserStats {
   total_walks: number;
@@ -14,6 +14,7 @@ interface UserStats {
 }
 
 export default function ProfileScreen() {
+  const { colors } = useTheme();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
@@ -119,8 +120,8 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-surface-secondary justify-center items-center">
-        <Text className="text-text-secondary font-rubik">Loading...</Text>
+      <View className="flex-1 justify-center items-center" style={{ backgroundColor: colors.surface.secondary }}>
+        <Text className="font-rubik" style={{ color: colors.text.secondary }}>Loading...</Text>
       </View>
     );
   }
@@ -131,11 +132,11 @@ export default function ProfileScreen() {
 
   return (
 
-    <ScrollView className="flex-1 bg-surface-secondary">
+    <ScrollView className="flex-1" style={{ backgroundColor: colors.surface.secondary }}>
       {/* Page Header */}
       <View className="px-6 pt-13 pb-4">
-        <Text className="text-3xl font-rubikBold text-text-primary">Account</Text>
-        <Text className="text-base font-rubik text-text-secondary mt-1">
+        <Text className="text-3xl font-rubikBold" style={{ color: colors.text.primary }}>Account</Text>
+        <Text className="text-base font-rubik mt-1" style={{ color: colors.text.secondary }}>
           Manage your profile and settings
         </Text>
       </View>
@@ -143,10 +144,10 @@ export default function ProfileScreen() {
     <View>
       {/* Profile Card */}
       <View className="mx-6 mb-4">
-        <View className="bg-surface rounded-card p-6 shadow-card">
+        <View className="rounded-card p-6 shadow-card" style={{ backgroundColor: colors.surface.primary }}>
           <View className="flex-row items-center mb-4">
             {/* Avatar */}
-            <View className="w-20 h-20 rounded-2xl bg-primary-100 items-center justify-center overflow-hidden mr-4">
+            <View className="w-20 h-20 rounded-2xl items-center justify-center overflow-hidden mr-4" style={{ backgroundColor: colors.primary[100] }}>
               {avatarUrl ? (
                 <Image 
                   source={{ uri: avatarUrl }}
@@ -154,7 +155,7 @@ export default function ProfileScreen() {
                   resizeMode="cover"
                 />
               ) : (
-                <Text className="text-2xl font-rubikBold text-primary-500">
+                <Text className="text-2xl font-rubikBold" style={{ color: colors.primary[500] }}>
                   {displayName.charAt(0).toUpperCase()}
                 </Text>
               )}
@@ -163,7 +164,7 @@ export default function ProfileScreen() {
             {/* Name and Info */}
             <View className="flex-1">
               <View className="flex-row items-center">
-                <Text className="text-xl font-rubikBold text-text-primary mr-2">
+                <Text className="text-xl font-rubikBold mr-2" style={{ color: colors.text.primary }}>
                   {displayName}
                 </Text>
                 {stats.verified && (
@@ -174,10 +175,10 @@ export default function ProfileScreen() {
                   />
                 )}
               </View>
-              <Text className="text-sm font-rubik text-text-secondary mt-1">
+              <Text className="text-sm font-rubik mt-1" style={{ color: colors.text.secondary }}>
                 Tecnologico de Monterrey
               </Text>
-              <Text className="text-sm font-rubik text-text-secondary">
+              <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>
                 {user?.email}
               </Text>
             </View>
@@ -198,33 +199,33 @@ export default function ProfileScreen() {
     <View className="px-6 mb-4">
         <View className="flex-row justify-between">
           {/* Total Walks */}
-          <View className="bg-surface rounded-card p-4 shadow-card flex-1 mr-2 items-center">
+          <View className="rounded-card p-4 shadow-card flex-1 mr-2 items-center" style={{ backgroundColor: colors.surface.primary }}>
             <View className="flex-row items-center mb-2">
-              <Text className="text-2xl font-rubikBold text-text-primary">
+              <Text className="text-2xl font-rubikBold" style={{ color: colors.text.primary }}>
               {stats.total_walks}
               </Text>
             </View>
-            <Text className="text-sm font-rubik text-text-secondary">Total Walks</Text>
+            <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>Total Walks</Text>
           </View>
 
           {/* Rating */}
-          <View className="bg-surface rounded-card p-4 shadow-card flex-1 mx-1 items-center">
+          <View className="rounded-card p-4 shadow-card flex-1 mx-1 items-center" style={{ backgroundColor: colors.surface.primary }}>
             <View className="flex-row items-center mb-2">
-              <Text className="text-2xl font-rubikBold text-text-primary">
+              <Text className="text-2xl font-rubikBold" style={{ color: colors.text.primary }}>
                 {stats.rating.toFixed(1)}
               </Text>
             </View>
-            <Text className="text-sm font-rubik text-text-secondary">Rating</Text>
+            <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>Rating</Text>
           </View>
 
           {/* Connections */}
-          <View className="bg-surface rounded-card p-4 shadow-card flex-1 ml-2 items-center">
+          <View className="rounded-card p-4 shadow-card flex-1 ml-2 items-center" style={{ backgroundColor: colors.surface.primary }}>
             <View className="flex-row items-center mb-2">
-              <Text className="text-2xl font-rubikBold text-text-primary">
+              <Text className="text-2xl font-rubikBold" style={{ color: colors.text.primary }}>
               {stats.connections}
               </Text>
             </View>
-            <Text className="text-sm font-rubik text-text-secondary">Connections </Text>
+            <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>Connections </Text>
           </View>
         </View>
       </View>
@@ -233,88 +234,89 @@ export default function ProfileScreen() {
 
     {/* Settings Menu */}
     <View className="mx-6 mb-4">
-            <View className="bg-surface rounded-card shadow-card overflow-hidden">
+            <View className="rounded-card shadow-card overflow-hidden" style={{ backgroundColor: colors.surface.primary }}>
               
               {/* Notifications */}
               <TouchableOpacity 
                 onPress={handleNotifications}
-                className="flex-row items-center p-4 border-b border-surface-tertiary active:bg-surface-secondary"
+                className="flex-row items-center p-4 border-b"
+                style={{ borderBottomColor: colors.surface.tertiary }}
               >
-                <View className="w-10 h-10 rounded-full bg-primary-50 items-center justify-center mr-3">
+                <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: colors.primary[50] }}>
                   <Ionicons name="notifications" size={20} color={colors.primary[700]} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-base font-rubikSemiBold text-text-primary">
+                  <Text className="text-base font-rubikSemiBold" style={{ color: colors.text.primary }}>
                     Notifications
                   </Text>
-                  <Text className="text-sm font-rubik text-text-secondary">
+                  <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>
                     Manage alerts and updates
                   </Text>
                 </View>
-                <Text className="text-text-tertiary text-xl">›</Text>
+                <Text className="text-xl" style={{ color: colors.text.tertiary }}>›</Text>
               </TouchableOpacity>
 
               {/* Privacy & Safety */}
               <TouchableOpacity 
                 onPress={handlePrivacy}
-                className="flex-row items-center p-4 border-b border-surface-tertiary active:bg-surface-secondary"
+                className="flex-row items-center p-4 border-b"
+                style={{ borderBottomColor: colors.surface.tertiary }}
               >
-                <View className="w-10 h-10 rounded-full bg-primary-50 items-center justify-center mr-3">
+                <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: colors.primary[50] }}>
                   <Ionicons name="shield-half" size={20} color={colors.primary[700]} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-base font-rubikSemiBold text-text-primary">
+                  <Text className="text-base font-rubikSemiBold" style={{ color: colors.text.primary }}>
                     Privacy & Safety
                   </Text>
-                  <Text className="text-sm font-rubik text-text-secondary">
+                  <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>
                     Control your visibility
                   </Text>
                 </View>
-                <Text className="text-text-tertiary text-xl">›</Text>
+                <Text className="text-xl" style={{ color: colors.text.tertiary }}>›</Text>
               </TouchableOpacity>
 
               {/* Verify Identity */}
               <TouchableOpacity 
                 onPress={handleVerifyIdentity}
-                className="flex-row items-center p-4 border-b border-surface-tertiary active:bg-surface-secondary"
+                className="flex-row items-center p-4 border-b"
+                style={{ borderBottomColor: colors.surface.tertiary }}
               >
-                <View className="w-10 h-10 rounded-full bg-primary-50 items-center justify-center mr-3">
+                <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: colors.primary[50] }}>
                   <Ionicons name="shield-checkmark" size={20} color={colors.primary[700]} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-base font-rubikSemiBold text-text-primary">
+                  <Text className="text-base font-rubikSemiBold" style={{ color: colors.text.primary }}>
                     Verify Identity
                   </Text>
-                  <Text className="text-sm font-rubik text-text-secondary">
+                  <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>
                     Complete your verification
                   </Text>
                 </View>
-                <Text className="text-text-tertiary text-xl">›</Text>
+                <Text className="text-xl" style={{ color: colors.text.tertiary }}>›</Text>
               </TouchableOpacity>
 
               {/* Help & Support */}
               <TouchableOpacity 
                 onPress={handleHelp}
-                className="flex-row items-center p-4 active:bg-surface-secondary"
+                className="flex-row items-center p-4"
               >
-                <View className="w-10 h-10 rounded-full bg-primary-50 items-center justify-center mr-3">
+                <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: colors.primary[50] }}>
                   <Ionicons name="help" size={20} color={colors.primary[700]} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-base font-rubikSemiBold text-text-primary">
+                  <Text className="text-base font-rubikSemiBold" style={{ color: colors.text.primary }}>
                     Help & Support
                   </Text>
-                  <Text className="text-sm font-rubik text-text-secondary">
+                  <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>
                     Get help or report issues
                   </Text>
                 </View>
-                <Text className="text-text-tertiary text-xl">›</Text>
+                <Text className="text-xl" style={{ color: colors.text.tertiary }}>›</Text>
               </TouchableOpacity>
 
             </View>
           </View>
-
-          <View className="h-px bg-surface-tertiary my-2" />
 
           {/* Sign Out Button */}
           <View className="mx-6 mb-8">

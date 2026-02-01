@@ -1,5 +1,6 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, View, StyleSheet } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 
 interface ButtonProps {
   title: string;
@@ -22,74 +23,101 @@ export default function Button({
   icon,
   fullWidth = false,
 }: ButtonProps) {
-  
+  const { colors } = useTheme();
 
-  const containerStyles = {
-    primary: 'bg-primary-100 active:bg-primary-50',
-    solid: 'bg-primary-500 active:bg-primary-50',
-    secondary: 'bg-secondary-50 active:bg-secondary-100',
-    outline: 'bg-transparent border-2 border-primary-500 active:bg-primary-50',
-    danger: 'bg-transparent active:bg-red-100 border-2 border-danger active:bg-danger',
-    ghost: 'bg-transparent active:bg-primary-50',
+  const getContainerStyle = () => {
+    const baseStyle = {
+      borderRadius: 12,
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    };
+
+    const variantStyles = {
+      primary: { backgroundColor: colors.primary[100] },
+      solid: { backgroundColor: colors.primary[500] },
+      secondary: { backgroundColor: colors.secondary[50] },
+      outline: { 
+        backgroundColor: 'transparent', 
+        borderWidth: 2, 
+        borderColor: colors.primary[500] 
+      },
+      danger: { 
+        backgroundColor: 'transparent', 
+        borderWidth: 2, 
+        borderColor: colors.danger 
+      },
+      ghost: { backgroundColor: 'transparent' },
+    };
+
+    return { ...baseStyle, ...variantStyles[variant] };
   };
 
-
-  const textStyles = {
-    primary: 'text-primary-700',
-    secondary: 'text-secondary-500',
-    solid: 'text-surface',
-    outline: 'text-primary-500',
-    danger: 'text-danger',
-    ghost: 'text-primary-500',
+  const getTextColor = () => {
+    const textColors = {
+      primary: colors.primary[700],
+      secondary: colors.secondary[500],
+      solid: colors.surface.primary,
+      outline: colors.primary[500],
+      danger: colors.danger,
+      ghost: colors.primary[500],
+    };
+    return textColors[variant];
   };
 
-
-  const sizeStyles = {
-    small: 'px-4 py-2',
-    medium: 'px-6 py-3',
-    large: 'px-8 py-4',
-    solid: 'px-10 py-4'
+  // Size styles
+  const getSizeStyle = () => {
+    const sizes = {
+      small: { paddingHorizontal: 16, paddingVertical: 8 },
+      medium: { paddingHorizontal: 24, paddingVertical: 12 },
+      large: { paddingHorizontal: 32, paddingVertical: 16 },
+      solid: { paddingHorizontal: 40, paddingVertical: 16 },
+    };
+    return sizes[size];
   };
 
-  const textSizeStyles = {
-    small: 'text-sm',
-    medium: 'text-base',
-    large: 'text-lg',
-    solid: 'text-lg'
+  const getTextSize = () => {
+    const sizes = {
+      small: 14,
+      medium: 16,
+      large: 18,
+      solid: 18,
+    };
+    return sizes[size];
   };
-
-
-  const disabledStyle = disabled || loading ? 'opacity-50' : '';
-  const widthStyle = fullWidth ? 'w-full' : 'w-64';
 
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled || loading}
-      className={`
-        ${containerStyles[variant]}
-        ${sizeStyles[size]}
-        ${disabledStyle}
-        ${widthStyle}
-        rounded-button
-        flex-row
-        items-center
-        justify-center
-      `}
+      style={[
+        getContainerStyle(),
+        getSizeStyle(),
+        fullWidth && { width: '100%' },
+        (disabled || loading) && { opacity: 0.5 },
+      ]}
+      activeOpacity={0.7}
     >
       {loading ? (
         <ActivityIndicator 
-          color={variant === 'primary' ? '#14b8ad' : variant === 'secondary' ? '#1a8cff' : variant === 'danger' ? '#F75555' : '#14b8ad'} 
+          color={
+            variant === 'primary' ? colors.primary[500] : 
+            variant === 'secondary' ? colors.secondary[500] : 
+            variant === 'danger' ? colors.danger : 
+            colors.primary[500]
+          } 
         />
       ) : (
         <>
-          {icon && <View className="mr-2">{icon}</View>}
-          <Text className={`
-            ${textStyles[variant]}
-            ${textSizeStyles[size]}
-            font-rubikSemiBold
-            text-center
-          `}>
+          {icon && <View style={{ marginRight: 8 }}>{icon}</View>}
+          <Text 
+            style={{
+              color: getTextColor(),
+              fontSize: getTextSize(),
+              fontWeight: '600',
+              textAlign: 'center',
+            }}
+          >
             {title}
           </Text>
         </>
