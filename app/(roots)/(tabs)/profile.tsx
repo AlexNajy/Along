@@ -5,7 +5,7 @@ import { supabase } from '@/libs/supabase';
 import Button from '@/components/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface UserStats {
     total_walks: number;
@@ -16,6 +16,7 @@ interface UserStats {
 
 export default function ProfileScreen() {
     const { colors } = useTheme();
+    const insets = useSafeAreaInsets();
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [signingOut, setSigningOut] = useState(false);
@@ -121,11 +122,17 @@ export default function ProfileScreen() {
 
     if (loading) {
         return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.secondary }} edges={['top']}>
-                <View className="flex-1 justify-center items-center">
-                    <Text className="font-rubik" style={{ color: colors.text.secondary }}>Loading...</Text>
-                </View>
-            </SafeAreaView>
+            <View 
+                style={{ 
+                    flex: 1, 
+                    backgroundColor: colors.surface.secondary,
+                    paddingTop: insets.top,
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }}
+            >
+                <Text style={{ fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>Loading...</Text>
+            </View>
         );
     }
 
@@ -133,39 +140,42 @@ export default function ProfileScreen() {
     const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.secondary }} edges={['top']}>
-            <ScrollView style={{ backgroundColor: colors.surface.secondary }}>
+        <View style={{ flex: 1, backgroundColor: colors.surface.secondary }}>
+            <ScrollView 
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingTop: insets.top }}
+            >
                 {/* Page Header */}
-                <View className="px-6 pb-4">
-                    <Text className="text-3xl font-rubikBold" style={{ color: colors.text.primary }}>Account</Text>
-                    <Text className="text-base font-rubik mt-1" style={{ color: colors.text.secondary }}>
+                <View style={{ paddingHorizontal: 24, paddingBottom: 16 }}>
+                    <Text style={{ fontSize: 30, fontFamily: 'Rubik-Bold', color: colors.text.primary }}>Account</Text>
+                    <Text style={{ fontSize: 16, fontFamily: 'Rubik-Regular', marginTop: 4, color: colors.text.secondary }}>
                         Manage your profile and settings
                     </Text>
                 </View>
 
                 {/* Profile Card */}
-                <View className="mx-6 mb-4">
-                    <View className="rounded-card p-6 shadow-card" style={{ backgroundColor: colors.surface.primary }}>
-                        <View className="flex-row items-center mb-4">
+                <View style={{ marginHorizontal: 24, marginBottom: 16 }}>
+                    <View style={{ borderRadius: 16, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, backgroundColor: colors.surface.primary }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
                             {/* Avatar */}
-                            <View className="w-20 h-20 rounded-2xl items-center justify-center overflow-hidden mr-4" style={{ backgroundColor: colors.primary[100] }}>
+                            <View style={{ width: 80, height: 80, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginRight: 16, backgroundColor: colors.primary[100] }}>
                                 {avatarUrl ? (
                                     <Image
                                         source={{ uri: avatarUrl }}
-                                        className="w-full h-full"
+                                        style={{ width: '100%', height: '100%' }}
                                         resizeMode="cover"
                                     />
                                 ) : (
-                                    <Text className="text-2xl font-rubikBold" style={{ color: colors.primary[500] }}>
+                                    <Text style={{ fontSize: 24, fontFamily: 'Rubik-Bold', color: colors.primary[500] }}>
                                         {displayName.charAt(0).toUpperCase()}
                                     </Text>
                                 )}
                             </View>
 
                             {/* Name and Info */}
-                            <View className="flex-1">
-                                <View className="flex-row items-center">
-                                    <Text className="text-xl font-rubikBold mr-2" style={{ color: colors.text.primary }}>
+                            <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Text style={{ fontSize: 20, fontFamily: 'Rubik-Bold', marginRight: 8, color: colors.text.primary }}>
                                         {displayName}
                                     </Text>
                                     {stats.verified && (
@@ -176,10 +186,10 @@ export default function ProfileScreen() {
                                         />
                                     )}
                                 </View>
-                                <Text className="text-sm font-rubik mt-1" style={{ color: colors.text.secondary }}>
+                                <Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular', marginTop: 4, color: colors.text.secondary }}>
                                     Tecnologico de Monterrey
                                 </Text>
-                                <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>
+                                <Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>
                                     {user?.email}
                                 </Text>
                             </View>
@@ -197,126 +207,125 @@ export default function ProfileScreen() {
                 </View>
 
                 {/* Stats Cards */}
-                <View className="px-6 mb-4">
-                    <View className="flex-row justify-between">
+                <View style={{ paddingHorizontal: 24, marginBottom: 16 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         {/* Total Walks */}
-                        <View className="rounded-card p-4 shadow-card flex-1 mr-2 items-center" style={{ backgroundColor: colors.surface.primary }}>
-                            <View className="flex-row items-center mb-2">
-                                <Text className="text-2xl font-rubikBold" style={{ color: colors.text.primary }}>
+                        <View style={{ borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, flex: 1, marginRight: 8, alignItems: 'center', backgroundColor: colors.surface.primary }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                <Text style={{ fontSize: 24, fontFamily: 'Rubik-Bold', color: colors.text.primary }}>
                                     {stats.total_walks}
                                 </Text>
                             </View>
-                            <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>Total Walks</Text>
+                            <Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>Total Walks</Text>
                         </View>
 
                         {/* Rating */}
-                        <View className="rounded-card p-4 shadow-card flex-1 mx-1 items-center" style={{ backgroundColor: colors.surface.primary }}>
-                            <View className="flex-row items-center mb-2">
-                                <Text className="text-2xl font-rubikBold" style={{ color: colors.text.primary }}>
+                        <View style={{ borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, flex: 1, marginHorizontal: 4, alignItems: 'center', backgroundColor: colors.surface.primary }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                <Text style={{ fontSize: 24, fontFamily: 'Rubik-Bold', color: colors.text.primary }}>
                                     {stats.rating.toFixed(1)}
                                 </Text>
                             </View>
-                            <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>Rating</Text>
+                            <Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>Rating</Text>
                         </View>
 
                         {/* Connections */}
-                        <View className="rounded-card p-4 shadow-card flex-1 ml-2 items-center" style={{ backgroundColor: colors.surface.primary }}>
-                            <View className="flex-row items-center mb-2">
-                                <Text className="text-2xl font-rubikBold" style={{ color: colors.text.primary }}>
+                        <View style={{ borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, flex: 1, marginLeft: 8, alignItems: 'center', backgroundColor: colors.surface.primary }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                <Text style={{ fontSize: 24, fontFamily: 'Rubik-Bold', color: colors.text.primary }}>
                                     {stats.connections}
                                 </Text>
                             </View>
-                            <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>Connections</Text>
+                            <Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>Connections</Text>
                         </View>
                     </View>
                 </View>
 
                 {/* Settings Menu */}
-                <View className="mx-6 mb-4">
-                    <View className="rounded-card shadow-card overflow-hidden" style={{ backgroundColor: colors.surface.primary }}>
+                <View style={{ marginHorizontal: 24, marginBottom: 16 }}>
+                    <View style={{ borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, overflow: 'hidden', backgroundColor: colors.surface.primary }}>
+                        
                         {/* Notifications */}
                         <TouchableOpacity
                             onPress={handleNotifications}
-                            className="flex-row items-center p-4 border-b"
-                            style={{ borderBottomColor: colors.surface.tertiary }}
+                            style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.surface.tertiary }}
                         >
-                            <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: colors.primary[50] }}>
+                            <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12, backgroundColor: colors.primary[50] }}>
                                 <Ionicons name="notifications" size={20} color={colors.primary[700]} />
                             </View>
-                            <View className="flex-1">
-                                <Text className="text-base font-rubikSemiBold" style={{ color: colors.text.primary }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 16, fontFamily: 'Rubik-SemiBold', color: colors.text.primary }}>
                                     Notifications
                                 </Text>
-                                <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>
+                                <Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>
                                     Manage alerts and updates
                                 </Text>
                             </View>
-                            <Text className="text-xl" style={{ color: colors.text.tertiary }}>›</Text>
+                            <Text style={{ fontSize: 20, color: colors.text.tertiary }}>›</Text>
                         </TouchableOpacity>
 
                         {/* Privacy & Safety */}
                         <TouchableOpacity
                             onPress={handlePrivacy}
-                            className="flex-row items-center p-4 border-b"
-                            style={{ borderBottomColor: colors.surface.tertiary }}
+                            style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.surface.tertiary }}
                         >
-                            <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: colors.primary[50] }}>
+                            <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12, backgroundColor: colors.primary[50] }}>
                                 <Ionicons name="shield-half" size={20} color={colors.primary[700]} />
                             </View>
-                            <View className="flex-1">
-                                <Text className="text-base font-rubikSemiBold" style={{ color: colors.text.primary }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 16, fontFamily: 'Rubik-SemiBold', color: colors.text.primary }}>
                                     Privacy & Safety
                                 </Text>
-                                <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>
+                                <Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>
                                     Control your visibility
                                 </Text>
                             </View>
-                            <Text className="text-xl" style={{ color: colors.text.tertiary }}>›</Text>
+                            <Text style={{ fontSize: 20, color: colors.text.tertiary }}>›</Text>
                         </TouchableOpacity>
 
                         {/* Verify Identity */}
                         <TouchableOpacity
                             onPress={handleVerifyIdentity}
-                            className="flex-row items-center p-4 border-b"
-                            style={{ borderBottomColor: colors.surface.tertiary }}
+                            style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.surface.tertiary }}
                         >
-                            <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: colors.primary[50] }}>
+                            <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12, backgroundColor: colors.primary[50] }}>
                                 <Ionicons name="shield-checkmark" size={20} color={colors.primary[700]} />
                             </View>
-                            <View className="flex-1">
-                                <Text className="text-base font-rubikSemiBold" style={{ color: colors.text.primary }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 16, fontFamily: 'Rubik-SemiBold', color: colors.text.primary }}>
                                     Verify Identity
                                 </Text>
-                                <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>
+                                <Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>
                                     Complete your verification
                                 </Text>
                             </View>
-                            <Text className="text-xl" style={{ color: colors.text.tertiary }}>›</Text>
+                            <Text style={{ fontSize: 20, color: colors.text.tertiary }}>›</Text>
                         </TouchableOpacity>
 
                         {/* Help & Support */}
                         <TouchableOpacity
                             onPress={handleHelp}
-                            className="flex-row items-center p-4"
+                            style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}
                         >
-                            <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: colors.primary[50] }}>
+                            <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12, backgroundColor: colors.primary[50] }}>
                                 <Ionicons name="help" size={20} color={colors.primary[700]} />
                             </View>
-                            <View className="flex-1">
-                                <Text className="text-base font-rubikSemiBold" style={{ color: colors.text.primary }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 16, fontFamily: 'Rubik-SemiBold', color: colors.text.primary }}>
                                     Help & Support
                                 </Text>
-                                <Text className="text-sm font-rubik" style={{ color: colors.text.secondary }}>
+                                <Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>
                                     Get help or report issues
                                 </Text>
                             </View>
-                            <Text className="text-xl" style={{ color: colors.text.tertiary }}>›</Text>
+                            <Text style={{ fontSize: 20, color: colors.text.tertiary }}>›</Text>
                         </TouchableOpacity>
+
                     </View>
                 </View>
 
                 {/* Sign Out Button */}
-                <View className="mx-6 mb-8">
+                <View style={{ marginHorizontal: 24, marginBottom: 32 }}>
                     <Button
                         title={signingOut ? "Signing Out..." : "Sign Out"}
                         onPress={handleSignOut}
@@ -327,6 +336,6 @@ export default function ProfileScreen() {
                     />
                 </View>
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }

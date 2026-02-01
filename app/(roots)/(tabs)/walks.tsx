@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, RefreshControl, StyleSheet } from "react-native";
 import { supabase } from "@/libs/supabase";
 import { useTheme } from "@/context/ThemeContext";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Walk = {
     id: string;
@@ -13,6 +13,7 @@ type Walk = {
 
 const Walks = () => {
     const { colors } = useTheme();
+    const insets = useSafeAreaInsets();
     const [walks, setWalks] = useState<Walk[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -49,27 +50,33 @@ const Walks = () => {
 
     if (loading) {
         return (
-            <SafeAreaView 
-                style={[styles.container, { backgroundColor: colors.surface.secondary }]} 
-                edges={['top']}
+            <View 
+                style={[
+                    styles.container, 
+                    { 
+                        backgroundColor: colors.surface.secondary,
+                        paddingTop: insets.top,
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }
+                ]}
             >
                 <Text style={{ color: colors.text.secondary }}>Loading...</Text>
-            </SafeAreaView>
+            </View>
         );
     }
 
     return (
-        <SafeAreaView 
-            style={[styles.container, { backgroundColor: colors.surface.secondary }]} 
-            edges={['top']}
-        >
-            <Text style={[styles.title, { color: colors.text.primary }]}>
-                Upcoming Walks
-            </Text>
-
+        <View style={[styles.container, { backgroundColor: colors.surface.secondary }]}>
             <FlatList
                 data={walks}
                 keyExtractor={(item) => item.id}
+                contentContainerStyle={{ paddingTop: insets.top, paddingHorizontal: 16 }}
+                ListHeaderComponent={
+                    <Text style={[styles.title, { color: colors.text.primary }]}>
+                        Upcoming Walks
+                    </Text>
+                }
                 renderItem={({ item }) => (
                     <View style={[styles.walkCard, { backgroundColor: colors.surface.primary }]}>
                         <Text style={{ color: colors.text.primary }}>
@@ -93,14 +100,13 @@ const Walks = () => {
                     />
                 }
             />
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingHorizontal: 16,
     },
     title: {
         fontSize: 18,

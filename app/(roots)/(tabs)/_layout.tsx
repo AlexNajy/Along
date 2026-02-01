@@ -1,21 +1,25 @@
-// app/(roots)/(tabs)/_layout.tsx
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 
 function TabsLayout() {
     const { colors } = useTheme();
-    
+
     return (
         <Tabs
             screenOptions={{
-                headerShown: false,  // This removes the headers
+                headerShown: false,
                 tabBarActiveTintColor: colors.primary[500],
                 tabBarInactiveTintColor: colors.black[200],
                 tabBarStyle: {
                     backgroundColor: colors.surface.primary,
                     borderTopColor: colors.surface.tertiary,
                 },
+                headerStyle: {
+                    backgroundColor: colors.surface.primary,
+                },
+                headerTintColor: colors.text.primary,
+                headerShadowVisible: false,
             }}
         >
             <Tabs.Screen
