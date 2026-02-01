@@ -1,3 +1,5 @@
+// These are degredated we use @/context/ThemeContext.tsx for light/dark colors
+
 export const colors = {
     primary: {
       50: "#e0f7f6",
