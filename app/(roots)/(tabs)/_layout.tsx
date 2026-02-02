@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 function TabsLayout() {
     const { colors } = useTheme();
@@ -15,11 +16,6 @@ function TabsLayout() {
                     backgroundColor: colors.surface.primary,
                     borderTopColor: colors.surface.tertiary,
                 },
-                headerStyle: {
-                    backgroundColor: colors.surface.primary,
-                },
-                headerTintColor: colors.text.primary,
-                headerShadowVisible: false,
             }}
         >
             <Tabs.Screen
@@ -56,7 +52,9 @@ function TabsLayout() {
 export default function Layout() {
     return (
         <ThemeProvider>
-            <TabsLayout />
+            <GestureHandlerRootView style={{ flex: 1 }}>
+                <TabsLayout />
+            </GestureHandlerRootView>
         </ThemeProvider>
     );
 }
