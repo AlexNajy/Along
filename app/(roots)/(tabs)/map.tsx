@@ -52,7 +52,7 @@ const Map = () => {
 
     useEffect(() => {
         fetchRoute();
-    }, [startMarker, endMarker, userLocation]);
+    }, [startMarker, endMarker]);
 
     const handleMapPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
