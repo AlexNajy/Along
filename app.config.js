@@ -26,13 +26,11 @@ export default {
       android: {
         adaptiveIcon: {
           backgroundColor: "#E6F4FE",
-          foregroundImage: "./assets/images/favicon.png"
         },
         package: "com.anonymous.Along"
       },
       web: {
         output: "static",
-        favicon: "./assets/images/favicon.png",
         bundler: "metro"
       },
       plugins: [

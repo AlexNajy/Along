@@ -1,13 +1,15 @@
-import React, {useEffect, useState} from "react";
-import { ScrollView, Text, View, Image, TouchableOpacity, Alert} from "react-native"
+import React, { useEffect, useState } from "react";
+import { ScrollView, Text, View, Image, TouchableOpacity, Alert } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context";
 import images from "@/constants/images";
 import icons from "@/constants/icons";
 import { GoogleSignin, statusCodes, isSuccessResponse } from '@react-native-google-signin/google-signin';
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
+import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 
-const SignIn = () => {
+function SignInContent() {
+    const { colors } = useTheme();
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
@@ -21,23 +23,23 @@ const SignIn = () => {
 
         try {
             setIsLoading(true);
-             
-            
+
+
             const response = await GoogleSignin.signIn();
-            
+
             if (isSuccessResponse(response)) {
                 const idToken = response.data.idToken;
                 setIsLoading(false);
-                
+
                 if (!idToken) {
                     Alert.alert('Error', 'Failed to get ID token from Google');
                     return;
                 }
-                
+
                 const { data, error } = await supabase.auth.signInWithIdToken({
                     provider: 'google',
                     token: idToken,
-                    nonce: undefined, 
+                    nonce: undefined,
                 });
 
                 if (error) {
@@ -51,7 +53,7 @@ const SignIn = () => {
             }
         } catch (error: any) {
             console.error('Google Sign In error:', error);
-            
+
             if (error.code === statusCodes.SIGN_IN_CANCELLED) {
                 console.log('User cancelled sign in');
             } else if (error.code === statusCodes.IN_PROGRESS) {
@@ -65,30 +67,42 @@ const SignIn = () => {
     };
 
     return (
-        <SafeAreaView className="bg-white h-full">
+        <SafeAreaView className="h-full" style={{ backgroundColor: colors.surface.primary }}>
             <ScrollView contentContainerClassName="h-full">
                 <Image source={images.onboarding} className="w-full h-4/6" resizeMode="contain" />
 
                 <View className="px-10">
-                    <Text className="text-base text-center uppercase font-rubik text-black-200">Welcome to Along</Text>
+                    <Text className="text-base text-center uppercase font-rubik" style={{ color: colors.black[200] }}>Welcome to Along</Text>
 
-                    <Text className="text-3xl text-center mt-2 font-rubikBold text-black-300">
+                    <Text className="text-3xl text-center mt-2 font-rubikBold" style={{ color: colors.black[300] }}>
                         Let's Get You Closer To {"\n"}
-                        <Text className="text-primary-300">Your Destination</Text>
+                        <Text style={{ color: colors.primary[500] }}>Your Destination</Text>
                     </Text>
 
-                    <Text className="text-lg font-rubik text-black-200 text-center mt-12">
+                    <Text className="text-lg font-rubik text-center mt-12" style={{ color: colors.black[200] }}>
                         Login to Along with Google
                     </Text>
 
-                    <TouchableOpacity onPress={handleLogin} className="bg-white shadow-md shadow-zinc-300 rounded-full w-full py-4 mt-5">
+                    <TouchableOpacity
+                        onPress={handleLogin}
+                        className="rounded-full w-full py-4 mt-5"
+                        style={{
+                            backgroundColor: colors.surface.primary,
+                            shadowColor: colors.black[100],      
+                            shadowOffset: { width: 0, height: 2 }, 
+                            shadowOpacity: 0.4,                  
+                            shadowRadius: 8,                     
+                            elevation: 3,                          
+                        }}
+                    >
+
                         <View className="flex flex-row items-center justify-center">
                             <Image
                                 source={icons.google}
                                 className="w-5 h-5"
                                 resizeMode="contain"
                             />
-                            <Text className="text-lg font-rubikMedium text-black-300 ml-2">
+                            <Text className="text-lg font-rubikMedium ml-2" style={{ color: colors.black[300] }}>
                                 Subscribe with Google
                             </Text>
                         </View>
@@ -100,4 +114,10 @@ const SignIn = () => {
     )
 }
 
-export default SignIn
+export default function SignIn() {
+    return (
+        <ThemeProvider>
+            <SignInContent />
+        </ThemeProvider>
+    );
+}
