@@ -144,6 +144,7 @@ export default function ProfileScreen() {
             <ScrollView 
                 style={{ flex: 1 }}
                 contentContainerStyle={{ paddingTop: insets.top }}
+                showsVerticalScrollIndicator={false}
             >
                 {/* Page Header */}
                 <View style={{ paddingHorizontal: 24, paddingBottom: 16 }}>

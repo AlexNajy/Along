@@ -85,8 +85,8 @@ const darkColors = {
     yellow: '#f59e0b',
   },
   surface: {
-    primary: '#000000',
-    secondary: '#1a1a1a',
+    primary: '#111111', 
+    secondary: '#1b1b1b',
     tertiary: '#2a2a2a',
   },
   text: {
