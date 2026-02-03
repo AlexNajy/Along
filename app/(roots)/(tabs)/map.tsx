@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { router } from "expo-router";
 import { Text, View, Pressable, StyleSheet } from "react-native";
 import Mapbox from '@rnmapbox/maps';
@@ -21,6 +21,13 @@ const Map = () => {
     const [startMarker, setStartMarker] = useState<{ lng: number, lat: number } | null>(null);
     const [endMarker, setEndMarker] = useState<{ lng: number, lat: number } | null>(null);
     const [route, setRoute] = useState<any>(null);
+    const lastRoutedLocation = useRef<[number, number] | null>(null);
+
+    const distanceFlat = (coord1: [number, number], coord2: [number, number]) => {
+        const [x1, y1] = coord1;
+        const [x2, y2] = coord2;
+        return Math.sqrt((x2 - x1)**2 + (y2 - y1)**2);
+    };    
 
     const fetchRoute = async () => {
         if (!endMarker || (!startMarker && !userLocation)) {
@@ -45,14 +52,30 @@ const Map = () => {
 
             const routeGeoJSON = response.body.routes[0].geometry;
             setRoute(routeGeoJSON);
+            console.log("Fetched Route");
         } catch (error) {
             console.error('Error fetching route:', error);
         }
     };
-
+    
     useEffect(() => {
         fetchRoute();
+        console.log("Marker Effect Triggered: Fetching Route");
     }, [startMarker, endMarker]);
+
+    useEffect(() => {
+        if (!userLocation || !endMarker) return;
+    
+        const distance = lastRoutedLocation.current
+            ? distanceFlat(lastRoutedLocation.current, userLocation)
+            : Infinity;
+    
+        if (distance >= 0.00009) {
+            fetchRoute();
+            lastRoutedLocation.current = userLocation;
+            console.log("User Moved: Fetching Route");
+        }
+    }, [userLocation]);
 
     const handleMapPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
@@ -109,8 +132,8 @@ const Map = () => {
         <View style={styles.container}>
             <Mapbox.MapView
                 style={styles.map}
-                attributionPosition={{ top: 5, left: 8 }}
-                styleURL={isDark ? Mapbox.StyleURL.Street : Mapbox.StyleURL.Street}
+                attributionPosition={{ top: -24, left: 10 }}
+                styleURL={isDark ? Mapbox.StyleURL.Dark : Mapbox.StyleURL.Street}
                 scaleBarEnabled={false}
                 onPress={handleMapPress}
                 onLongPress={handleMapLongPress}
