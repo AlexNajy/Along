@@ -146,17 +146,11 @@ export default function ProfileScreen() {
                 contentContainerStyle={{ paddingTop: insets.top }}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Page Header */}
-                <View style={{ paddingHorizontal: 24, paddingBottom: 16 }}>
-                    <Text style={{ fontSize: 30, fontFamily: 'Rubik-Bold', color: colors.text.primary }}>Account</Text>
-                    <Text style={{ fontSize: 16, fontFamily: 'Rubik-Regular', marginTop: 4, color: colors.text.secondary }}>
-                        Manage your profile and settings
-                    </Text>
-                </View>
+
 
                 {/* Profile Card */}
                 <View style={{ marginHorizontal: 24, marginBottom: 16 }}>
-                    <View style={{ borderRadius: 16, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, backgroundColor: colors.surface.primary }}>
+                    <View style={{ borderRadius:16, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, backgroundColor: colors.surface.primary }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
                             {/* Avatar */}
                             <View style={{ width: 80, height: 80, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginRight: 16, backgroundColor: colors.primary[100] }}>
@@ -233,11 +227,11 @@ export default function ProfileScreen() {
                         {/* Connections */}
                         <View style={{ borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, flex: 1, marginLeft: 8, alignItems: 'center', backgroundColor: colors.surface.primary }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                                <Text style={{ fontSize: 24, fontFamily: 'Rubik-Bold', color: colors.text.primary }}>
+                                <Text style={{ fontSize: 24, fontFamily: 'Rubik-Bold', color: colors.text.primary,  }}>
                                     {stats.connections}
                                 </Text>
                             </View>
-                            <Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>Connections</Text>
+                            <Text style={{ fontSize: 13, fontFamily: 'Rubik-Regular', color: colors.text.secondary,  }}>Connections</Text>
                         </View>
                     </View>
                 </View>
