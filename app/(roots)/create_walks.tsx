@@ -101,7 +101,7 @@ export default function createWalks() {
             setDestination("");
             setMinutesInput("");
             setVibe("chill");
-            router.back();
+            router.replace("../(tabs)/walks");
         }
     };
 
