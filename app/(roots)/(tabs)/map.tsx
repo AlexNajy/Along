@@ -59,12 +59,13 @@ const Map = () => {
     };
     
     useEffect(() => {
+        if (!endMarker) return;
         fetchRoute();
         console.log("Marker Effect Triggered: Fetching Route");
     }, [startMarker, endMarker]);
 
     useEffect(() => {
-        if (!userLocation || !endMarker) return;
+        if (!userLocation || !endMarker || startMarker) return;
     
         const distance = lastRoutedLocation.current
             ? distanceFlat(lastRoutedLocation.current, userLocation)
