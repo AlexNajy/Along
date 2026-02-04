@@ -22,6 +22,7 @@ const Map = () => {
     const [endMarker, setEndMarker] = useState<{ lng: number, lat: number } | null>(null);
     const [route, setRoute] = useState<any>(null);
     const lastRoutedLocation = useRef<[number, number] | null>(null);
+    const didMountRef = useRef(false);
 
     const distanceFlat = (coord1: [number, number], coord2: [number, number]) => {
         const [x1, y1] = coord1;
@@ -59,10 +60,13 @@ const Map = () => {
     };
     
     useEffect(() => {
-        if (!endMarker) return;
-        fetchRoute();
-        console.log("Marker Effect Triggered: Fetching Route");
-    }, [startMarker, endMarker]);
+        if (didMountRef.current) {
+          fetchRoute();
+          console.log("Marker Effect Triggered: Fetching Route");
+        } else {
+          didMountRef.current = true; 
+        }
+      }, [startMarker, endMarker]);
 
     useEffect(() => {
         if (!userLocation || !endMarker || startMarker) return;
@@ -134,7 +138,7 @@ const Map = () => {
             <Mapbox.MapView
                 style={styles.map}
                 attributionPosition={{ top: -24, left: 10 }}
-                styleURL={isDark ? Mapbox.StyleURL.Dark : Mapbox.StyleURL.Street}
+                styleURL={isDark ? Mapbox.StyleURL.Street : Mapbox.StyleURL.Street}
                 scaleBarEnabled={false}
                 onPress={handleMapPress}
                 onLongPress={handleMapLongPress}
@@ -229,7 +233,16 @@ const Map = () => {
                 <View style={styles.button}>
                     <Button
                         title="Create Walk"
-                        onPress={() => router.push("/(roots)/create_walks")}
+                        onPress={() => router.push({
+                            pathname: "/(roots)/create_walks",
+                            params: {
+                              start: startMarker ? JSON.stringify(startMarker) : undefined,
+                              end: endMarker ? JSON.stringify(endMarker) : undefined,
+                              user: userLocation ? JSON.stringify({ lng: userLocation[0], lat: userLocation[1] }) : undefined,
+                            },
+                          })
+                        }
+                        
                         variant="solid"
                         size="solid"
                         fullWidth={false}

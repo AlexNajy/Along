@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Text, View, Pressable, TextInput, Alert } from "react-native";
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
+import { useLocalSearchParams } from "expo-router";
 
 export default function createWalks() {
     const [start, setStart] = useState("");
@@ -9,6 +10,16 @@ export default function createWalks() {
     const [minutesInput, setMinutesInput] = useState("");
     const [vibe, setVibe] = useState("chill");
     const maxTime = 1440;
+
+    const params = useLocalSearchParams();
+
+    const start2 = params.start ? JSON.parse(Array.isArray(params.start) ? params.start[0] : params.start) : null;
+    const end = params.end ? JSON.parse(Array.isArray(params.end) ? params.end[0] : params.end) : null;
+    const user = params.user ? JSON.parse(Array.isArray(params.user) ? params.user[0] : params.user) : null;
+
+    console.log("Start:", start2);
+    console.log("End:", end);
+    console.log("User:", user);
 
     const canPost =
         start.trim() !== "" &&
@@ -157,7 +168,7 @@ export default function createWalks() {
                             onChangeText={(text) => {
                                 const numericText = text.replace(/[^0-9]/g, '');
                                 const numericValue = parseInt(numericText);
-                                
+
                                 if (numericText === '') {
                                     setMinutesInput('');
                                 } else if (numericValue > maxTime) {
