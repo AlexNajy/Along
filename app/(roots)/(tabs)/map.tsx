@@ -74,7 +74,7 @@ const Map = () => {
     
         try {
             const res = await fetch(
-                `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/get-route-gh`,
+                `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/get-route`,
                 {
                     method: 'POST',
                     headers: {
