@@ -11,6 +11,8 @@ import { UBC_BOUNDARY, UBC_CENTER_COORDINATE, UBC_MAX_BOUNDS } from "@/constants
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
+const USER_REROUTE_METERS = 10;
+
 // const directionsClient = mbxDirections({
 //     accessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!
 // });
@@ -25,10 +27,23 @@ const Map = () => {
     const didMountRef = useRef(false);
     const lastRouteTime = useRef(0);
 
-    const distanceFlat = (coord1: [number, number], coord2: [number, number]) => {
-        const [x1, y1] = coord1;
-        const [x2, y2] = coord2;
-        return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+    const distanceMeters = (
+        [lng1, lat1]: [number, number],
+        [lng2, lat2]: [number, number]
+    ) => {
+        const R = 6371000;
+        const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+        const dLat = toRad(lat2 - lat1);
+        const dLng = toRad(lng2 - lng1);
+
+        const a =
+            Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(lat1)) *
+            Math.cos(toRad(lat2)) *
+            Math.sin(dLng / 2) ** 2;
+
+        return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     };
 
     // const fetchRoute = async () => {
@@ -65,16 +80,16 @@ const Map = () => {
             setRoute(null);
             return;
         }
-    
+
         const start = startMarker
             ? [startMarker.lng, startMarker.lat]
             : userLocation!;
-    
+
         const end = [endMarker.lng, endMarker.lat];
-    
+
         try {
             const res = await fetch(
-                `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/get-route`,
+                `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/${process.env.EXPO_PUBLIC_ROUTING_FUNCTION}`,
                 {
                     method: 'POST',
                     headers: {
@@ -84,12 +99,12 @@ const Map = () => {
                     body: JSON.stringify({ start, end })
                 }
             );
-    
+
             if (!res.ok) {
                 console.error('Route fetch error:', await res.text());
                 return;
             }
-    
+
             const geojson = await res.json();
             setRoute(geojson);
         } catch (err) {
@@ -110,13 +125,12 @@ const Map = () => {
         if (!userLocation || !endMarker || startMarker) return;
 
         const distance = lastRoutedLocation.current
-            ? distanceFlat(lastRoutedLocation.current, userLocation)
+            ? distanceMeters(lastRoutedLocation.current, userLocation)
             : Infinity;
 
-        if (distance >= 0.00009) {
+        if (distance >= USER_REROUTE_METERS) {
             fetchRoute();
             lastRoutedLocation.current = userLocation;
-            console.log("User Moved: Fetching Route");
         }
     }, [userLocation]);
 
