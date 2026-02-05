@@ -62,7 +62,7 @@ const Walks = () => {
             const interval = setInterval(() => {
                 const startTime = new Date(activeWalk.start_time).getTime();
                 const now = Date.now();
-                const diff = Math.floor((now - startTime) / 1000); // seconds
+                const diff = Math.floor((now - startTime) / 1000); 
                 setWalkDuration(diff);
             }, 1000);
 
@@ -114,36 +114,24 @@ const Walks = () => {
     await fetchMyWalks();
     };
 
-
-    const formatTime = (iso: string) =>
-    new Date(iso).toLocaleString(undefined, {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-
-    
-
     return (
     <View style={[styles.container, { backgroundColor: colors.surface.secondary }]}>
         <ScrollView
-        contentContainerStyle={{
-            paddingTop: insets.top + 18,
-            paddingHorizontal: 18,
-            paddingBottom: 24,
-            flexGrow: 1,
+            contentContainerStyle={{
+                paddingTop: insets.top + 18,
+                paddingHorizontal: 18,
+                paddingBottom: 24,
+                flexGrow: 1,
 
-        }}
-        refreshControl={
-            <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary[500]}
-            />
-        }
-        >
+            }}
+            refreshControl={
+                <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={colors.primary[500]}
+                />
+            }
+            >
         
         {!activeWalk ? (
     <View
@@ -169,7 +157,7 @@ const Walks = () => {
         </Text>
 
         <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
-        Start a walk from the Map tab to see it here
+        Start a walk from the Map to see it here
         </Text>
     </View>
     ) : (
