@@ -23,6 +23,7 @@ const Map = () => {
     const [startMarker, setStartMarker] = useState<{ lng: number, lat: number } | null>(null);
     const [endMarker, setEndMarker] = useState<{ lng: number, lat: number } | null>(null);
     const [route, setRoute] = useState<any>(null);
+    const [isLoadingRoute, setIsLoadingRoute] = useState(false);
     const lastRoutedLocation = useRef<[number, number] | null>(null);
     const didMountRef = useRef(false);
     const lastRouteTime = useRef(0);
@@ -87,6 +88,15 @@ const Map = () => {
 
         const end = [endMarker.lng, endMarker.lat];
 
+        setIsLoadingRoute(true);
+        setRoute({
+            type: "Feature",
+            geometry: {
+                type: "LineString",
+                coordinates: [start, end]
+            }
+        });
+
         try {
             const res = await fetch(
                 `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/${process.env.EXPO_PUBLIC_ROUTING_FUNCTION}`,
@@ -107,8 +117,10 @@ const Map = () => {
 
             const geojson = await res.json();
             setRoute(geojson);
+            setIsLoadingRoute(false);
         } catch (err) {
             console.error('Route fetch failed:', err);
+            setIsLoadingRoute(false);
         }
     };
 
@@ -246,10 +258,11 @@ const Map = () => {
                         <Mapbox.LineLayer
                             id="route-line"
                             style={{
-                                lineColor: colors.secondary[300],
+                                lineColor: isLoadingRoute ? colors.secondary[200] : colors.secondary[300],
                                 lineWidth: 4,
                                 lineCap: 'round',
                                 lineJoin: 'round',
+                                lineDasharray: isLoadingRoute ? [] : [],
                             }}
                         />
                     </Mapbox.ShapeSource>
@@ -284,7 +297,7 @@ const Map = () => {
             {route && (
                 <View style={styles.button}>
                     <Button
-                        title="Create Walk"
+                        title={isLoadingRoute ? "Fetching..." : "Go Walk"}
                         onPress={() => router.push({
                             pathname: "/(roots)/create_walks",
                             params: {
@@ -292,12 +305,11 @@ const Map = () => {
                                 end: endMarker ? JSON.stringify(endMarker) : undefined,
                                 user: userLocation ? JSON.stringify({ lng: userLocation[0], lat: userLocation[1] }) : undefined,
                             },
-                        })
-                        }
-
+                        })}
                         variant="solid"
                         size="solid"
                         fullWidth={false}
+                        disabled={isLoadingRoute}
                     />
                 </View>
             )}
