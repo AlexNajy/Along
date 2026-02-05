@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { router } from "expo-router";
 import { Text, View, Pressable, StyleSheet } from "react-native";
 import Mapbox from '@rnmapbox/maps';
-import mbxDirections from '@mapbox/mapbox-sdk/services/directions';
+//import mbxDirections from '@mapbox/mapbox-sdk/services/directions';
 import Button from "@/components/Button";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from '@expo/vector-icons';
@@ -11,9 +11,9 @@ import { UBC_BOUNDARY, UBC_CENTER_COORDINATE, UBC_MAX_BOUNDS } from "@/constants
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
-const directionsClient = mbxDirections({
-    accessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!
-});
+// const directionsClient = mbxDirections({
+//     accessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!
+// });
 
 const Map = () => {
     const { colors, isDark } = useTheme();
@@ -23,58 +23,96 @@ const Map = () => {
     const [route, setRoute] = useState<any>(null);
     const lastRoutedLocation = useRef<[number, number] | null>(null);
     const didMountRef = useRef(false);
+    const lastRouteTime = useRef(0);
 
     const distanceFlat = (coord1: [number, number], coord2: [number, number]) => {
         const [x1, y1] = coord1;
         const [x2, y2] = coord2;
-        return Math.sqrt((x2 - x1)**2 + (y2 - y1)**2);
-    };    
+        return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+    };
+
+    // const fetchRoute = async () => {
+    //     if (!endMarker || (!startMarker && !userLocation)) {
+    //         setRoute(null);
+    //         return;
+    //     }
+
+    //     try {
+    //         const response = await directionsClient.getDirections({
+    //             profile: 'walking',
+    //             waypoints: startMarker
+    //                 ? [
+    //                     { coordinates: [startMarker.lng, startMarker.lat] },
+    //                     { coordinates: [endMarker.lng, endMarker.lat] }
+    //                 ]
+    //                 : [
+    //                     { coordinates: userLocation! },
+    //                     { coordinates: [endMarker.lng, endMarker.lat] }
+    //                 ],
+    //             geometries: 'geojson'
+    //         }).send();
+
+    //         const routeGeoJSON = response.body.routes[0].geometry;
+    //         setRoute(routeGeoJSON);
+    //         console.log("Fetched Route");
+    //     } catch (error) {
+    //         console.error('Error fetching route:', error);
+    //     }
+    // };
 
     const fetchRoute = async () => {
         if (!endMarker || (!startMarker && !userLocation)) {
             setRoute(null);
             return;
         }
-
+    
+        const start = startMarker
+            ? [startMarker.lng, startMarker.lat]
+            : userLocation!;
+    
+        const end = [endMarker.lng, endMarker.lat];
+    
         try {
-            const response = await directionsClient.getDirections({
-                profile: 'walking',
-                waypoints: startMarker
-                    ? [
-                        { coordinates: [startMarker.lng, startMarker.lat] },
-                        { coordinates: [endMarker.lng, endMarker.lat] }
-                    ]
-                    : [
-                        { coordinates: userLocation! },
-                        { coordinates: [endMarker.lng, endMarker.lat] }
-                    ],
-                geometries: 'geojson'
-            }).send();
-
-            const routeGeoJSON = response.body.routes[0].geometry;
-            setRoute(routeGeoJSON);
-            console.log("Fetched Route");
-        } catch (error) {
-            console.error('Error fetching route:', error);
+            const res = await fetch(
+                `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/get-route-gh`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({ start, end })
+                }
+            );
+    
+            if (!res.ok) {
+                console.error('Route fetch error:', await res.text());
+                return;
+            }
+    
+            const geojson = await res.json();
+            setRoute(geojson);
+        } catch (err) {
+            console.error('Route fetch failed:', err);
         }
     };
-    
+
     useEffect(() => {
         if (didMountRef.current) {
-          fetchRoute();
-          console.log("Marker Effect Triggered: Fetching Route");
+            fetchRoute();
+            console.log("Marker Effect Triggered: Fetching Route");
         } else {
-          didMountRef.current = true; 
+            didMountRef.current = true;
         }
-      }, [startMarker, endMarker]);
+    }, [startMarker, endMarker]);
 
     useEffect(() => {
         if (!userLocation || !endMarker || startMarker) return;
-    
+
         const distance = lastRoutedLocation.current
             ? distanceFlat(lastRoutedLocation.current, userLocation)
             : Infinity;
-    
+
         if (distance >= 0.00009) {
             fetchRoute();
             lastRoutedLocation.current = userLocation;
@@ -236,13 +274,13 @@ const Map = () => {
                         onPress={() => router.push({
                             pathname: "/(roots)/create_walks",
                             params: {
-                              start: startMarker ? JSON.stringify(startMarker) : undefined,
-                              end: endMarker ? JSON.stringify(endMarker) : undefined,
-                              user: userLocation ? JSON.stringify({ lng: userLocation[0], lat: userLocation[1] }) : undefined,
+                                start: startMarker ? JSON.stringify(startMarker) : undefined,
+                                end: endMarker ? JSON.stringify(endMarker) : undefined,
+                                user: userLocation ? JSON.stringify({ lng: userLocation[0], lat: userLocation[1] }) : undefined,
                             },
-                          })
+                        })
                         }
-                        
+
                         variant="solid"
                         size="solid"
                         fullWidth={false}
