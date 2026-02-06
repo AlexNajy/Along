@@ -32,6 +32,7 @@ const Walks = () => {
     const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
     const [walks, setWalks] = useState<Walk[]>([]);
+    const [pastWalks, setPastWalks] = useState<Walk[]>([]); 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [walkDuration, setWalkDuration] = useState(0);
@@ -76,6 +77,25 @@ const Walks = () => {
             return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
         };
 
+        const fetchPastWalks = useCallback(async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+          
+            const { data, error } = await supabase
+              .from("walks")
+              .select("id, start_location, end_location, start_time, status")
+              .eq("user_id", user.id)
+              .eq("status", "past")
+              .order("start_time", { ascending: false })
+              .limit(5);
+          
+            if (error) {
+              console.error("Error fetching past walks:", error.message);
+            } else {
+              setPastWalks(data ?? []);
+            }
+        }, []);
+
       useFocusEffect(
         useCallback(() => {
             fetchMyWalks();
@@ -85,16 +105,16 @@ const Walks = () => {
         useEffect(() => {
             const loadInitialData = async () => {
               setLoading(true);
-              await fetchMyWalks();
+              await Promise.all([fetchMyWalks(),fetchPastWalks()]);
               setLoading(false);
             };
           
             loadInitialData();
-          }, [fetchMyWalks]);
+          }, [fetchMyWalks, fetchPastWalks]);
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await fetchMyWalks();
+        await Promise.all([fetchMyWalks(),fetchPastWalks()]);
         setRefreshing(false);
     };
 
@@ -133,35 +153,67 @@ const Walks = () => {
             }
             >
         
-        {!activeWalk ? (
-    <View
-        style={[
-        styles.heroCard,
-        {
-            backgroundColor: colors.surface.primary,
-            borderColor: colors.surface.tertiary,
-        },
-        ]}
-    >
+    {!activeWalk ? (
+        <>
+        
         <View
-        style={[
-            styles.iconCircle, 
-            { backgroundColor: `${colors.primary[500]}1A` },
-        ]}
+            style={[
+            styles.heroCard,
+            {
+                backgroundColor: colors.surface.primary,
+                borderColor: colors.surface.tertiary,
+            },
+            ]}
         >
-        <Ionicons name="navigate-outline" size={25} color={colors.primary[700]} />
+            <View
+            style={[
+                styles.iconCircle, 
+                { backgroundColor: `${colors.primary[500]}1A` },
+            ]}
+            >
+            <Ionicons name="navigate-outline" size={25} color={colors.primary[700]} />
+            </View>
+
+            <Text style={[styles.heroTitle, { color: colors.text.primary }]}>
+            No active walk
+            </Text>
+
+            <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
+            Start a walk from the Map to see it here
+            </Text>
         </View>
 
-        <Text style={[styles.heroTitle, { color: colors.text.primary }]}>
-        No active walk
-        </Text>
+        {pastWalks.length > 0 && (
+            <View style={styles.historySection}>
+                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+                    Walk History
+                </Text>
 
-        <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
-        Start a walk from the Map to see it here
-        </Text>
-    </View>
+                {pastWalks.map((walk) => (
+                    <Pressable 
+                        key={walk.id}
+                        style={[styles.historyCard, { backgroundColor: colors.surface.primary }]}
+                    >
+                        <View style={styles.historyCardContent}>
+                            <View style={styles.historyCardLeft}>
+                                <View style={[styles.historyIconCircle, { backgroundColor: `${colors.primary[500]}1A` }]}>
+                                    <Ionicons name="walk" size={20} color={colors.primary[500]} />
+                                </View>
+                                <View style={styles.historyCardInfo}>
+                                    <Text style={[styles.historyCardTitle, { color: colors.text.primary }]} numberOfLines={1}>
+                                    {walk.start_location} to {walk.end_location}
+                                    </Text>
+                                </View>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
+                        </View>
+                    </Pressable>
+                ))}
+            </View>
+        )}
+        </>
     ) : (
-        <View>
+    <View>
         
         <View style={styles.activeHeader}>
             <Text style={[styles.activeHeaderTitle, { color: colors.text.primary }]}>
@@ -370,143 +422,190 @@ const styles = StyleSheet.create({
         paddingBottom: 24,
       },
 
-      // Add to your existing styles
-activeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: 16,
-    marginTop: 8,
-},
-activeHeaderTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-},
-safetyButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-},
-statsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
-},
-statCard: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-},
-statIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-},
-statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 4,
-},
-statLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-},
-infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-},
-infoIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-},
-infoTextContainer: {
-    flex: 1,
-},
-infoLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 4,
-},
-infoValue: {
-    fontSize: 17,
-    fontWeight: '700',
-},
-buttonContainer: {
-    marginTop: 8,
-},
-mapCard: {
-    height: 300,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 16,
-    position: 'relative',
-},
-mapView: {
-    flex: 1,
-},
-mapOverlay: {
-    position: 'absolute',
-    top: 16,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    pointerEvents: 'none',
-},
-meetingBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-},
-meetingBadgeText: {
-    fontSize: 15,
-    fontWeight: '600',
-},
-compassButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-},
-marker: {
-    alignItems: 'center',
-    justifyContent: 'center',
-},
+    activeHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingBottom: 16,
+        marginTop: 8,
+    },
+    activeHeaderTitle: {
+        fontSize: 28,
+        fontWeight: '800',
+    },
+    safetyButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    statsRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 12,
+    },
+    statCard: {
+        flex: 1,
+        padding: 16,
+        borderRadius: 16,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    statIconCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+    },
+    statValue: {
+        fontSize: 20,
+        fontWeight: '700',
+        marginBottom: 4,
+    },
+    statLabel: {
+        fontSize: 13,
+        fontWeight: '500',
+    },
+    infoCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    infoIconCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    infoTextContainer: {
+        flex: 1,
+    },
+    infoLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    infoValue: {
+        fontSize: 17,
+        fontWeight: '700',
+    },
+    buttonContainer: {
+        marginTop: 8,
+    },
+    mapCard: {
+        height: 300,
+        borderRadius: 16,
+        overflow: 'hidden',
+        marginBottom: 16,
+        position: 'relative',
+    },
+    mapView: {
+        flex: 1,
+    },
+    mapOverlay: {
+        position: 'absolute',
+        top: 16,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        pointerEvents: 'none',
+    },
+    meetingBadge: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    meetingBadgeText: {
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    compassButton: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    marker: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    historySection: {
+        marginTop: 24,
+    },
+    sectionTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        marginBottom: 12,
+    },
+    historyCard: {
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    historyCardContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    historyCardLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        marginRight: 12,
+    },
+    historyIconCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    historyCardInfo: {
+        flex: 1,
+    },
+    historyCardTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    historyCardDate: {
+        fontSize: 13,
+    },
   });
   
