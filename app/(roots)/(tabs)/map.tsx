@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Text, View, Pressable, StyleSheet } from "react-native";
 import Mapbox from '@rnmapbox/maps';
 //import mbxDirections from '@mapbox/mapbox-sdk/services/directions';
+import { distanceMeters, isPointInPolygon } from '@/libs/geometry';
 import Button from "@/components/Button";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from '@expo/vector-icons';
@@ -25,27 +26,8 @@ const Map = () => {
     const [route, setRoute] = useState<any>(null);
     const [isLoadingRoute, setIsLoadingRoute] = useState(false);
     const lastRoutedLocation = useRef<[number, number] | null>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
     const didMountRef = useRef(false);
-    const lastRouteTime = useRef(0);
-
-    const distanceMeters = (
-        [lng1, lat1]: [number, number],
-        [lng2, lat2]: [number, number]
-    ) => {
-        const R = 6371000;
-        const toRad = (deg: number) => (deg * Math.PI) / 180;
-
-        const dLat = toRad(lat2 - lat1);
-        const dLng = toRad(lng2 - lng1);
-
-        const a =
-            Math.sin(dLat / 2) ** 2 +
-            Math.cos(toRad(lat1)) *
-            Math.cos(toRad(lat2)) *
-            Math.sin(dLng / 2) ** 2;
-
-        return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    };
 
     // const fetchRoute = async () => {
     //     if (!endMarker || (!startMarker && !userLocation)) {
@@ -77,6 +59,10 @@ const Map = () => {
     // };
 
     const fetchRoute = async () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+
         if (!endMarker || (!startMarker && !userLocation)) {
             setRoute(null);
             return;
@@ -85,8 +71,10 @@ const Map = () => {
         const start = startMarker
             ? [startMarker.lng, startMarker.lat]
             : userLocation!;
-
         const end = [endMarker.lng, endMarker.lat];
+
+        const abortController = new AbortController();
+        abortControllerRef.current = abortController;
 
         setIsLoadingRoute(true);
         setRoute({
@@ -106,12 +94,14 @@ const Map = () => {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
                     },
-                    body: JSON.stringify({ start, end })
+                    body: JSON.stringify({ start, end }),
+                    signal: abortController.signal
                 }
             );
 
             if (!res.ok) {
                 console.error('Route fetch error:', await res.text());
+                setIsLoadingRoute(false);
                 return;
             }
 
@@ -119,6 +109,10 @@ const Map = () => {
             setRoute(geojson);
             setIsLoadingRoute(false);
         } catch (err) {
+            if (err instanceof Error && err.name === 'AbortError') {
+                console.log('Route fetch cancelled');
+                return;
+            }
             console.error('Route fetch failed:', err);
             setIsLoadingRoute(false);
         }
@@ -133,27 +127,27 @@ const Map = () => {
         }
     }, [startMarker, endMarker]);
 
-    useEffect(() => {
-        if (!userLocation || !endMarker || startMarker) return;
+    // useEffect(() => {
+    //     if (!userLocation || !endMarker || startMarker) return;
 
-        const distance = lastRoutedLocation.current
-            ? distanceMeters(lastRoutedLocation.current, userLocation)
-            : Infinity;
+    //     const distance = lastRoutedLocation.current
+    //         ? distanceMeters(lastRoutedLocation.current, userLocation)
+    //         : Infinity;
 
-        if (distance >= USER_REROUTE_METERS) {
-            fetchRoute();
-            lastRoutedLocation.current = userLocation;
-        }
-    }, [userLocation]);
+    //     if (distance >= USER_REROUTE_METERS) {
+    //         fetchRoute();
+    //         lastRoutedLocation.current = userLocation;
+    //     }
+    // }, [userLocation]);
 
     const handleMapPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
-
-        if (!isPointInPolygon(lng, lat)) {
+    
+        if (!isPointInPolygon(lng, lat, UBC_BOUNDARY)) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             return;
         }
-
+    
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setEndMarker({ lng, lat });
     };
@@ -161,7 +155,7 @@ const Map = () => {
     const handleMapLongPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
 
-        if (!isPointInPolygon(lng, lat)) {
+        if (!isPointInPolygon(lng, lat, UBC_BOUNDARY)) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             return;
         }
@@ -179,22 +173,6 @@ const Map = () => {
             setStartMarker(null)
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
         }
-    };
-
-    const isPointInPolygon = (lng: number, lat: number) => {
-        const coords = UBC_BOUNDARY.geometry.coordinates[0];
-        let inside = false;
-
-        for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
-            const xi = coords[i][0], yi = coords[i][1];
-            const xj = coords[j][0], yj = coords[j][1];
-
-            const intersect = ((yi > lat) !== (yj > lat))
-                && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
-            if (intersect) inside = !inside;
-        }
-
-        return inside;
     };
 
     return (
@@ -258,11 +236,12 @@ const Map = () => {
                         <Mapbox.LineLayer
                             id="route-line"
                             style={{
-                                lineColor: isLoadingRoute ? colors.secondary[200] : colors.secondary[300],
+                                lineColor: colors.secondary[300],
                                 lineWidth: 4,
                                 lineCap: 'round',
                                 lineJoin: 'round',
-                                lineDasharray: isLoadingRoute ? [] : [],
+                                lineDasharray: isLoadingRoute ? [2, 2] : [],
+                                lineOpacity: isLoadingRoute ? 0.5 : 1,
                             }}
                         />
                     </Mapbox.ShapeSource>
