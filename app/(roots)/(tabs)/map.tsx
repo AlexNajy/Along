@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { router } from "expo-router";
 import { Text, View, Pressable, StyleSheet } from "react-native";
 import Mapbox from '@rnmapbox/maps';
-import mbxDirections from '@mapbox/mapbox-sdk/services/directions';
+//import mbxDirections from '@mapbox/mapbox-sdk/services/directions';
+import { distanceMeters, isPointInPolygon } from '@/libs/geometry';
 import Button from "@/components/Button";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from '@expo/vector-icons';
@@ -11,9 +12,11 @@ import { UBC_BOUNDARY, UBC_CENTER_COORDINATE, UBC_MAX_BOUNDS } from "@/constants
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
-const directionsClient = mbxDirections({
-    accessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!
-});
+const USER_REROUTE_METERS = 10;
+
+// const directionsClient = mbxDirections({
+//     accessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!
+// });
 
 const Map = () => {
     const { colors, isDark } = useTheme();
@@ -21,75 +24,130 @@ const Map = () => {
     const [startMarker, setStartMarker] = useState<{ lng: number, lat: number } | null>(null);
     const [endMarker, setEndMarker] = useState<{ lng: number, lat: number } | null>(null);
     const [route, setRoute] = useState<any>(null);
+    const [isLoadingRoute, setIsLoadingRoute] = useState(false);
     const lastRoutedLocation = useRef<[number, number] | null>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
     const didMountRef = useRef(false);
 
-    const distanceFlat = (coord1: [number, number], coord2: [number, number]) => {
-        const [x1, y1] = coord1;
-        const [x2, y2] = coord2;
-        return Math.sqrt((x2 - x1)**2 + (y2 - y1)**2);
-    };    
+    // const fetchRoute = async () => {
+    //     if (!endMarker || (!startMarker && !userLocation)) {
+    //         setRoute(null);
+    //         return;
+    //     }
+
+    //     try {
+    //         const response = await directionsClient.getDirections({
+    //             profile: 'walking',
+    //             waypoints: startMarker
+    //                 ? [
+    //                     { coordinates: [startMarker.lng, startMarker.lat] },
+    //                     { coordinates: [endMarker.lng, endMarker.lat] }
+    //                 ]
+    //                 : [
+    //                     { coordinates: userLocation! },
+    //                     { coordinates: [endMarker.lng, endMarker.lat] }
+    //                 ],
+    //             geometries: 'geojson'
+    //         }).send();
+
+    //         const routeGeoJSON = response.body.routes[0].geometry;
+    //         setRoute(routeGeoJSON);
+    //         console.log("Fetched Route");
+    //     } catch (error) {
+    //         console.error('Error fetching route:', error);
+    //     }
+    // };
 
     const fetchRoute = async () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+
         if (!endMarker || (!startMarker && !userLocation)) {
             setRoute(null);
             return;
         }
 
-        try {
-            const response = await directionsClient.getDirections({
-                profile: 'walking',
-                waypoints: startMarker
-                    ? [
-                        { coordinates: [startMarker.lng, startMarker.lat] },
-                        { coordinates: [endMarker.lng, endMarker.lat] }
-                    ]
-                    : [
-                        { coordinates: userLocation! },
-                        { coordinates: [endMarker.lng, endMarker.lat] }
-                    ],
-                geometries: 'geojson'
-            }).send();
+        const start = startMarker
+            ? [startMarker.lng, startMarker.lat]
+            : userLocation!;
+        const end = [endMarker.lng, endMarker.lat];
 
-            const routeGeoJSON = response.body.routes[0].geometry;
-            setRoute(routeGeoJSON);
-            console.log("Fetched Route");
-        } catch (error) {
-            console.error('Error fetching route:', error);
+        const abortController = new AbortController();
+        abortControllerRef.current = abortController;
+
+        setIsLoadingRoute(true);
+        setRoute({
+            type: "Feature",
+            geometry: {
+                type: "LineString",
+                coordinates: [start, end]
+            }
+        });
+
+        try {
+            const res = await fetch(
+                `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/${process.env.EXPO_PUBLIC_ROUTING_FUNCTION}`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({ start, end }),
+                    signal: abortController.signal
+                }
+            );
+
+            if (!res.ok) {
+                console.error('Route fetch error:', await res.text());
+                setIsLoadingRoute(false);
+                return;
+            }
+
+            const geojson = await res.json();
+            setRoute(geojson);
+            setIsLoadingRoute(false);
+        } catch (err) {
+            if (err instanceof Error && err.name === 'AbortError') {
+                console.log('Route fetch cancelled');
+                return;
+            }
+            console.error('Route fetch failed:', err);
+            setIsLoadingRoute(false);
         }
     };
-    
-    useEffect(() => {
-        if (didMountRef.current) {
-          fetchRoute();
-          console.log("Marker Effect Triggered: Fetching Route");
-        } else {
-          didMountRef.current = true; 
-        }
-      }, [startMarker, endMarker]);
 
     useEffect(() => {
-        if (!userLocation || !endMarker || startMarker) return;
-    
-        const distance = lastRoutedLocation.current
-            ? distanceFlat(lastRoutedLocation.current, userLocation)
-            : Infinity;
-    
-        if (distance >= 0.00009) {
+        if (didMountRef.current) {
             fetchRoute();
-            lastRoutedLocation.current = userLocation;
-            console.log("User Moved: Fetching Route");
+            console.log("Marker Effect Triggered: Fetching Route");
+        } else {
+            didMountRef.current = true;
         }
-    }, [userLocation]);
+    }, [startMarker, endMarker]);
+
+    // useEffect(() => {
+    //     if (!userLocation || !endMarker || startMarker) return;
+
+    //     const distance = lastRoutedLocation.current
+    //         ? distanceMeters(lastRoutedLocation.current, userLocation)
+    //         : Infinity;
+
+    //     if (distance >= USER_REROUTE_METERS) {
+    //         fetchRoute();
+    //         lastRoutedLocation.current = userLocation;
+    //     }
+    // }, [userLocation]);
 
     const handleMapPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
-
-        if (!isPointInPolygon(lng, lat)) {
+    
+        if (!isPointInPolygon(lng, lat, UBC_BOUNDARY)) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             return;
         }
-
+    
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setEndMarker({ lng, lat });
     };
@@ -97,7 +155,7 @@ const Map = () => {
     const handleMapLongPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
 
-        if (!isPointInPolygon(lng, lat)) {
+        if (!isPointInPolygon(lng, lat, UBC_BOUNDARY)) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             return;
         }
@@ -115,22 +173,6 @@ const Map = () => {
             setStartMarker(null)
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
         }
-    };
-
-    const isPointInPolygon = (lng: number, lat: number) => {
-        const coords = UBC_BOUNDARY.geometry.coordinates[0];
-        let inside = false;
-
-        for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
-            const xi = coords[i][0], yi = coords[i][1];
-            const xj = coords[j][0], yj = coords[j][1];
-
-            const intersect = ((yi > lat) !== (yj > lat))
-                && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
-            if (intersect) inside = !inside;
-        }
-
-        return inside;
     };
 
     return (
@@ -198,6 +240,8 @@ const Map = () => {
                                 lineWidth: 4,
                                 lineCap: 'round',
                                 lineJoin: 'round',
+                                lineDasharray: isLoadingRoute ? [2, 2] : [],
+                                lineOpacity: isLoadingRoute ? 0.5 : 1,
                             }}
                         />
                     </Mapbox.ShapeSource>
@@ -232,20 +276,19 @@ const Map = () => {
             {route && (
                 <View style={styles.button}>
                     <Button
-                        title="Create Walk"
+                        title={isLoadingRoute ? "Fetching..." : "Go Walk"}
                         onPress={() => router.push({
                             pathname: "/(roots)/create_walks",
                             params: {
-                              start: startMarker ? JSON.stringify(startMarker) : undefined,
-                              end: endMarker ? JSON.stringify(endMarker) : undefined,
-                              user: userLocation ? JSON.stringify({ lng: userLocation[0], lat: userLocation[1] }) : undefined,
+                                start: startMarker ? JSON.stringify(startMarker) : undefined,
+                                end: endMarker ? JSON.stringify(endMarker) : undefined,
+                                user: userLocation ? JSON.stringify({ lng: userLocation[0], lat: userLocation[1] }) : undefined,
                             },
-                          })
-                        }
-                        
+                        })}
                         variant="solid"
                         size="solid"
                         fullWidth={false}
+                        disabled={isLoadingRoute}
                     />
                 </View>
             )}
