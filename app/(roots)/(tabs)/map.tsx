@@ -9,8 +9,9 @@ import WalkPins from "@/components/WalkPins";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { UBC_BOUNDARY, UBC_CENTER_COORDINATE, UBC_MAX_BOUNDS } from "@/constants/boundaries";
 import { Walk } from "@/constants/types";
+import { CAMPUSES, CampusConfig } from "@/constants/campuses";
+
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
@@ -18,14 +19,20 @@ const USER_REROUTE_METERS = 10;
 
 const Map = () => {
     const { colors, isDark } = useTheme();
+
+    const [campus] = useState<CampusConfig>(CAMPUSES.ubc);
+
     const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-    const [startMarker, setStartMarker] = useState<{ lng: number, lat: number } | null>(null);
-    const [endMarker, setEndMarker] = useState<{ lng: number, lat: number } | null>(null);
+    const [startMarker, setStartMarker] = useState<{ lng: number; lat: number } | null>(null);
+    const [endMarker, setEndMarker] = useState<{ lng: number; lat: number } | null>(null);
+
     const [route, setRoute] = useState<any>(null);
     const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+
     const lastRoutedLocation = useRef<[number, number] | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const didMountRef = useRef(false);
+
     const [walks, setWalks] = useState<Walk[]>([]);
     const [selectedWalkId, setSelectedWalkId] = useState<string | null>(null);
 
@@ -109,28 +116,28 @@ const Map = () => {
 
     useEffect(() => {
         fetchWalks();
-      
+
         const channel = supabase
-          .channel('walks-updates')
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'walks',
-            },
-            (payload) => {
-              console.log('Walks changed:', payload);
-              fetchWalks(); // simple + safe
-            }
-          )
-          .subscribe();
-      
+            .channel('walks-updates')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'walks',
+                },
+                (payload) => {
+                    console.log('Walks changed:', payload);
+                    fetchWalks();
+                }
+            )
+            .subscribe();
+
         return () => {
-          supabase.removeChannel(channel);
+            supabase.removeChannel(channel);
         };
-      }, []);
-      
+    }, []);
+
     useEffect(() => {
         if (didMountRef.current) {
             fetchRoute();
@@ -153,13 +160,17 @@ const Map = () => {
         }
     }, [userLocation]);
 
+    const validatePoint = (lng: number, lat: number) => {
+        if (!isPointInPolygon(lng, lat, campus.boundary)) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            return false;
+        }
+        return true;
+    };
+
     const handleMapPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
-
-        if (!isPointInPolygon(lng, lat, UBC_BOUNDARY)) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            return;
-        }
+        if (!validatePoint(lng, lat)) return;
 
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setEndMarker({ lng, lat });
@@ -167,15 +178,12 @@ const Map = () => {
 
     const handleMapLongPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
-
-        if (!isPointInPolygon(lng, lat, UBC_BOUNDARY)) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            return;
-        }
+        if (!validatePoint(lng, lat)) return;
 
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setStartMarker({ lng, lat });
     };
+
 
     const handleMarkerPress = (type: 'start' | 'end') => {
         if (type === 'start') {
@@ -190,21 +198,21 @@ const Map = () => {
 
     const handleWalkPress = (walkId: string) => {
         if (selectedWalkId === walkId) {
-          setSelectedWalkId(null);
-          console.log('Deselected walk');
+            setSelectedWalkId(null);
+            console.log('Deselected walk');
         } else {
-          setSelectedWalkId(walkId);
-          const selectedWalk = walks.find(w => w.id === walkId);
-          console.log('Selected walk:', selectedWalk);
+            setSelectedWalkId(walkId);
+            const selectedWalk = walks.find(w => w.id === walkId);
+            console.log('Selected walk:', selectedWalk);
         }
-      };
+    };
 
     return (
         <View style={styles.container}>
             <Mapbox.MapView
                 style={styles.map}
                 attributionPosition={{ top: -24, left: 10 }}
-                styleURL={isDark 
+                styleURL={isDark
                     ? 'mapbox://styles/alongapp/cmlc3oo6p009n01st2ubr6ybw'
                     : Mapbox.StyleURL.Street}
                 scaleBarEnabled={false}
@@ -218,8 +226,8 @@ const Map = () => {
                     zoomLevel={15}
                     animationMode="flyTo"
                     animationDuration={2000}
-                    maxBounds={UBC_MAX_BOUNDS}
-                    centerCoordinate={UBC_CENTER_COORDINATE}
+                    maxBounds={campus.maxBounds}
+                    centerCoordinate={campus.center}
                     pitch={30}
                 />
 
@@ -231,11 +239,11 @@ const Map = () => {
                     }}
                 />
 
-                <Mapbox.ShapeSource id="ubc-boundary" shape={UBC_BOUNDARY}>
+                <Mapbox.ShapeSource id="campus-boundary" shape={campus.boundary}>
                     <Mapbox.LineLayer
-                        id="ubc-boundary-line"
+                        id="campus-boundary-line"
                         style={{
-                            lineColor: colors.ubc.secondary,
+                            lineColor: campus.themeColor,
                             lineWidth: 3,
                             lineDasharray: [4, 2],
                             lineOpacity: 0.8,
@@ -287,7 +295,7 @@ const Map = () => {
                 <WalkPins
                     walks={walks}
                     onWalkPress={handleWalkPress}
-                    selectedWalkId={selectedWalkId}  
+                    selectedWalkId={selectedWalkId}
                 />
 
             </Mapbox.MapView>

@@ -73,15 +73,8 @@ export default function ProfileScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         setSigningOut(true);
-                        try {
-                            const { error } = await supabase.auth.signOut();
-                            if (error) throw error;
-                        } catch (error) {
-                            console.error('Error signing out:', error);
-                            Alert.alert('Error', 'Could not sign out. Please try again.');
-                        } finally {
-                            setSigningOut(false);
-                        }
+                        await signOut(); 
+                        setSigningOut(false);
                     },
                 },
             ]
@@ -314,7 +307,7 @@ export default function ProfileScreen() {
                 <View style={{ marginHorizontal: 24, marginBottom: 32 }}>
                     <Button
                         title={signingOut ? "Signing Out..." : "Sign Out"}
-                        onPress={signOut}
+                        onPress={handleSignOut}
                         variant="danger"
                         size="medium"
                         fullWidth

@@ -8,7 +8,6 @@ import { useFocusEffect } from "expo-router";
 import Button from "@/components/Button";
 import Mapbox from '@rnmapbox/maps';
 import { router } from "expo-router";
-import { UBC_CENTER_COORDINATE } from "@/constants/boundaries";
 import { Walk } from "@/constants/types"
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
@@ -225,9 +224,7 @@ const Activity = () => {
                                 <Mapbox.Camera
                                     zoomLevel={14}
                                     centerCoordinate={
-                                        activeWalk.start_lng && activeWalk.start_lat
-                                            ? [activeWalk.start_lng, activeWalk.start_lat]
-                                            : UBC_CENTER_COORDINATE
+                                        [activeWalk.start_lng, activeWalk.start_lat]
                                     }
                                     animationMode="none"
                                 />
