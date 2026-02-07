@@ -10,7 +10,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { UBC_BOUNDARY, UBC_CENTER_COORDINATE, UBC_MAX_BOUNDS } from "@/constants/boundaries";
-import { Walk } from "@/constants/walk";
+import { Walk } from "@/constants/types";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
@@ -264,17 +264,9 @@ const Map = () => {
                         </View>
                     </Mapbox.PointAnnotation>
                 )}
-                {walks.map((walk) => (
-                    <Mapbox.PointAnnotation
-                        key={`walk-start-${walk.id}`}
-                        id={`walk-start-${walk.id}`}
-                        coordinate={[walk.start_lng, walk.start_lat]}
-                    >
-                        <View style={[]}>
-                            <Ionicons name="location" size={32}/>
-                        </View>
-                    </Mapbox.PointAnnotation>
-                ))}
+
+                <WalkPins walks={walks} />
+
             </Mapbox.MapView>
 
             {route && (

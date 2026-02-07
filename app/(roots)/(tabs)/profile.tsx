@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
 import { supabase } from '@/libs/supabase';
 import Button from '@/components/Button';
 import { Ionicons } from '@expo/vector-icons';
