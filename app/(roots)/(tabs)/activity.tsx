@@ -323,7 +323,6 @@ const Activity = () => {
                             </View>
                         </View>
 
-
                         <View style={styles.buttonContainer}>
                             <Button
                                 title="End Walk"
