@@ -27,6 +27,7 @@ const Map = () => {
     const abortControllerRef = useRef<AbortController | null>(null);
     const didMountRef = useRef(false);
     const [walks, setWalks] = useState<Walk[]>([]);
+    const [selectedWalkId, setSelectedWalkId] = useState<string | null>(null);
 
     const fetchWalks = async () => {
         try {
@@ -167,6 +168,17 @@ const Map = () => {
         }
     };
 
+    const handleWalkPress = (walkId: string) => {
+        if (selectedWalkId === walkId) {
+          setSelectedWalkId(null);
+          console.log('Deselected walk');
+        } else {
+          setSelectedWalkId(walkId);
+          const selectedWalk = walks.find(w => w.id === walkId);
+          console.log('Selected walk:', selectedWalk);
+        }
+      };
+
     return (
         <View style={styles.container}>
             <Mapbox.MapView
@@ -265,7 +277,11 @@ const Map = () => {
                     </Mapbox.PointAnnotation>
                 )}
 
-                <WalkPins walks={walks} />
+                <WalkPins
+                    walks={walks}
+                    onWalkPress={handleWalkPress}
+                    selectedWalkId={selectedWalkId}  
+                />
 
             </Mapbox.MapView>
 

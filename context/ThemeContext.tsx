@@ -52,6 +52,7 @@ const lightColors = {
     secondary: '#0055B7',
   },
   danger: '#F75555',
+  blank: '#E5E7EB'
 };
 
 const darkColors = {
@@ -105,6 +106,7 @@ const darkColors = {
     secondary: '#0055B7',
   },
   danger: '#ff6b6b',
+  blank: '#E5E7EB'
 };
 
 type ColorScheme = typeof lightColors;
