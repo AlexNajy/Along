@@ -10,11 +10,13 @@ import Mapbox from '@rnmapbox/maps';
 import { router } from "expo-router";
 import { UBC_CENTER_COORDINATE } from "@/constants/boundaries";
 import { Walk } from "@/constants/types"
+import { useAuth } from "@/context/AuthContext";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
 const Activity = () => {
     const { colors, isDark } = useTheme();
+    const { user, loading: authLoading } = useAuth();
     const insets = useSafeAreaInsets();
     const [walks, setWalks] = useState<Walk[]>([]);
     const [pastWalks, setPastWalks] = useState<Walk[]>([]);
@@ -23,7 +25,6 @@ const Activity = () => {
     const [walkDuration, setWalkDuration] = useState(0);
 
     const fetchMyWalks = useCallback(async () => {
-        const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data, error } = await supabase
@@ -38,7 +39,7 @@ const Activity = () => {
         } else {
             setWalks(data ?? []);
         }
-    }, []);
+    }, [user]);
 
     const activeWalk = walks[0] ?? null;
 
@@ -63,7 +64,6 @@ const Activity = () => {
     };
 
     const fetchPastWalks = useCallback(async () => {
-        const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data, error } = await supabase
@@ -79,7 +79,7 @@ const Activity = () => {
         } else {
             setPastWalks(data ?? []);
         }
-    }, []);
+    }, [user]);
 
     useFocusEffect(
         useCallback(() => {
