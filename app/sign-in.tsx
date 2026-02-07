@@ -7,9 +7,11 @@ import { GoogleSignin, statusCodes, isSuccessResponse } from '@react-native-goog
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
+import { useAuth } from "@/context/AuthContext";
 
 function SignInContent() {
     const { colors } = useTheme();
+    const { user } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
@@ -17,6 +19,12 @@ function SignInContent() {
             iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
         });
     }, []);
+
+    useEffect(() => {
+        if (user) {
+            router.replace("/(roots)/(tabs)/map");
+        }
+    }, [user]);
 
     const handleLogin = async () => {
         if (isLoading) return;
@@ -29,27 +37,25 @@ function SignInContent() {
 
             if (isSuccessResponse(response)) {
                 const idToken = response.data.idToken;
-                setIsLoading(false);
-
+            
                 if (!idToken) {
                     Alert.alert('Error', 'Failed to get ID token from Google');
-                    return;
+                    return; 
                 }
-
+            
                 const { data, error } = await supabase.auth.signInWithIdToken({
                     provider: 'google',
                     token: idToken,
                     nonce: undefined,
                 });
-
+            
                 if (error) {
                     Alert.alert('Sign In Error', error.message);
                     console.error('Supabase auth error:', error);
                     return;
                 }
-
+            
                 console.log('Signed in successfully:', data.user?.email);
-                router.replace("/(roots)/(tabs)/map");
             }
         } catch (error: any) {
             console.error('Google Sign In error:', error);
