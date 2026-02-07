@@ -1,22 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
 import { router } from "expo-router";
-import { Text, View, Pressable, StyleSheet } from "react-native";
+import { supabase } from "@/libs/supabase";
+import { View, StyleSheet } from "react-native";
 import Mapbox from '@rnmapbox/maps';
-//import mbxDirections from '@mapbox/mapbox-sdk/services/directions';
 import { distanceMeters, isPointInPolygon } from '@/libs/geometry';
 import Button from "@/components/Button";
+import WalkPins from "@/components/WalkPins";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { UBC_BOUNDARY, UBC_CENTER_COORDINATE, UBC_MAX_BOUNDS } from "@/constants/boundaries";
+import { Walk } from "@/constants/walk";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
 const USER_REROUTE_METERS = 10;
-
-// const directionsClient = mbxDirections({
-//     accessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!
-// });
 
 const Map = () => {
     const { colors, isDark } = useTheme();
@@ -28,35 +26,25 @@ const Map = () => {
     const lastRoutedLocation = useRef<[number, number] | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const didMountRef = useRef(false);
+    const [walks, setWalks] = useState<Walk[]>([]);
 
-    // const fetchRoute = async () => {
-    //     if (!endMarker || (!startMarker && !userLocation)) {
-    //         setRoute(null);
-    //         return;
-    //     }
+    const fetchWalks = async () => {
+        try {
+            const { data, error } = await supabase
+                .from("walks")
+                .select("*")
+                .eq("status", "upcoming")
+                .order("start_time", { ascending: true });
 
-    //     try {
-    //         const response = await directionsClient.getDirections({
-    //             profile: 'walking',
-    //             waypoints: startMarker
-    //                 ? [
-    //                     { coordinates: [startMarker.lng, startMarker.lat] },
-    //                     { coordinates: [endMarker.lng, endMarker.lat] }
-    //                 ]
-    //                 : [
-    //                     { coordinates: userLocation! },
-    //                     { coordinates: [endMarker.lng, endMarker.lat] }
-    //                 ],
-    //             geometries: 'geojson'
-    //         }).send();
+            if (error) throw error;
 
-    //         const routeGeoJSON = response.body.routes[0].geometry;
-    //         setRoute(routeGeoJSON);
-    //         console.log("Fetched Route");
-    //     } catch (error) {
-    //         console.error('Error fetching route:', error);
-    //     }
-    // };
+            if (data) {
+                setWalks(data as Walk[]);
+            }
+        } catch (err: any) {
+            console.error("Failed to fetch walks:", err);
+        }
+    };
 
     const fetchRoute = async () => {
         if (abortControllerRef.current) {
@@ -119,6 +107,10 @@ const Map = () => {
     };
 
     useEffect(() => {
+        fetchWalks();
+    }, []);
+
+    useEffect(() => {
         if (didMountRef.current) {
             fetchRoute();
             console.log("Marker Effect Triggered: Fetching Route");
@@ -127,27 +119,27 @@ const Map = () => {
         }
     }, [startMarker, endMarker]);
 
-    // useEffect(() => {
-    //     if (!userLocation || !endMarker || startMarker) return;
+    useEffect(() => {
+        if (!userLocation || !endMarker || startMarker) return;
 
-    //     const distance = lastRoutedLocation.current
-    //         ? distanceMeters(lastRoutedLocation.current, userLocation)
-    //         : Infinity;
+        const distance = lastRoutedLocation.current
+            ? distanceMeters(lastRoutedLocation.current, userLocation)
+            : Infinity;
 
-    //     if (distance >= USER_REROUTE_METERS) {
-    //         fetchRoute();
-    //         lastRoutedLocation.current = userLocation;
-    //     }
-    // }, [userLocation]);
+        if (distance >= USER_REROUTE_METERS) {
+            fetchRoute();
+            lastRoutedLocation.current = userLocation;
+        }
+    }, [userLocation]);
 
     const handleMapPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
-    
+
         if (!isPointInPolygon(lng, lat, UBC_BOUNDARY)) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             return;
         }
-    
+
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setEndMarker({ lng, lat });
     };
@@ -212,6 +204,7 @@ const Map = () => {
                             lineColor: colors.ubc.secondary,
                             lineWidth: 3,
                             lineDasharray: [4, 2],
+                            lineOpacity: 0.8,
                         }}
                     />
                 </Mapbox.ShapeSource>
@@ -254,7 +247,7 @@ const Map = () => {
                         anchor={{ x: 0.5, y: 1 }}
                         onSelected={() => handleMarkerPress('start')}
                     >
-                        <View style={styles.marker}>
+                        <View style={[]}>
                             <Ionicons name="location" color={colors.secondary[500]} size={48} />
                         </View>
                     </Mapbox.PointAnnotation>
@@ -266,11 +259,22 @@ const Map = () => {
                         anchor={{ x: 0.5, y: 1 }}
                         onSelected={() => handleMarkerPress('end')}
                     >
-                        <View style={styles.marker}>
+                        <View style={[]}>
                             <Ionicons name="location" color={colors.primary[500]} size={48} />
                         </View>
                     </Mapbox.PointAnnotation>
                 )}
+                {walks.map((walk) => (
+                    <Mapbox.PointAnnotation
+                        key={`walk-start-${walk.id}`}
+                        id={`walk-start-${walk.id}`}
+                        coordinate={[walk.start_lng, walk.start_lat]}
+                    >
+                        <View style={[]}>
+                            <Ionicons name="location" size={32}/>
+                        </View>
+                    </Mapbox.PointAnnotation>
+                ))}
             </Mapbox.MapView>
 
             {route && (
@@ -309,8 +313,6 @@ const styles = StyleSheet.create({
         bottom: 30,
         alignSelf: "center",
         height: 56,
-    },
-    marker: {
     }
 });
 

@@ -101,8 +101,8 @@ const darkColors = {
     300: '#6b7280',
   },
   ubc: {
-    primary: '#4a90e2',
-    secondary: '#5ca3ff',
+    primary: '#002145',
+    secondary: '#0055B7',
   },
   danger: '#ff6b6b',
 };

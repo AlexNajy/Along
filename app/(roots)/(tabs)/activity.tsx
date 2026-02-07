@@ -9,26 +9,11 @@ import Button from "@/components/Button";
 import Mapbox from '@rnmapbox/maps';
 import { router } from "expo-router";
 import { UBC_CENTER_COORDINATE } from "@/constants/boundaries";
+import { Walk } from "@/constants/walk";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
-
-
-
-type Walk = {
-    id: string;
-    start_location: string;
-    end_location: string;
-    start_time: string;
-    status: "active" | "upcoming" | "past";
-    start_lng?: number;  
-    start_lat?: number;
-    end_lng?: number;
-    end_lat?: number;
-}
-
-
-const Walks = () => {
+const Activity = () => {
     const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
     const [walks, setWalks] = useState<Walk[]>([]);
@@ -83,7 +68,7 @@ const Walks = () => {
           
             const { data, error } = await supabase
               .from("walks")
-              .select("id, start_location, end_location, start_time, status")
+              .select("*")
               .eq("user_id", user.id)
               .eq("status", "past")
               .order("start_time", { ascending: false })
@@ -356,7 +341,7 @@ const Walks = () => {
     );
 };
 
-export default Walks;
+export default Activity;
 
 
 const styles = StyleSheet.create({
