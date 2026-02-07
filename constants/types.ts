@@ -20,5 +20,4 @@ export type Profile = {
     total_walks?: number;
     rating?: number;
     connections?: number;
-
 }
