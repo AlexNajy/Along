@@ -109,8 +109,28 @@ const Map = () => {
 
     useEffect(() => {
         fetchWalks();
-    }, []);
-
+      
+        const channel = supabase
+          .channel('walks-updates')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'walks',
+            },
+            (payload) => {
+              console.log('Walks changed:', payload);
+              fetchWalks(); // simple + safe
+            }
+          )
+          .subscribe();
+      
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      }, []);
+      
     useEffect(() => {
         if (didMountRef.current) {
             fetchRoute();
@@ -184,7 +204,9 @@ const Map = () => {
             <Mapbox.MapView
                 style={styles.map}
                 attributionPosition={{ top: -24, left: 10 }}
-                styleURL={isDark ? Mapbox.StyleURL.Street : Mapbox.StyleURL.Street}
+                styleURL={isDark 
+                    ? 'mapbox://styles/alongapp/cmlc3oo6p009n01st2ubr6ybw'
+                    : Mapbox.StyleURL.Street}
                 scaleBarEnabled={false}
                 onPress={handleMapPress}
                 onLongPress={handleMapLongPress}
@@ -220,21 +242,6 @@ const Map = () => {
                         }}
                     />
                 </Mapbox.ShapeSource>
-
-                <Mapbox.VectorSource id="mapbox-buildings" url="mapbox://mapbox.mapbox-streets-v8">
-                    <Mapbox.FillExtrusionLayer
-                        id="3d-buildings"
-                        sourceLayerID="building"
-                        minZoomLevel={12}
-                        maxZoomLevel={22}
-                        style={{
-                            fillExtrusionHeight: ['get', 'height'],
-                            fillExtrusionBase: ['get', 'min_height'],
-                            fillExtrusionColor: isDark ? '#555' : '#aaa',
-                            fillExtrusionOpacity: 0.6,
-                        }}
-                    />
-                </Mapbox.VectorSource>
 
                 {route && (
                     <Mapbox.ShapeSource id="route" shape={route}>

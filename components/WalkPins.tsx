@@ -72,7 +72,7 @@ const WalkPins: React.FC<Props> = ({ walks, onWalkPress, selectedWalkId }) => {
                   style={{
                     width: isSelected ? 45 : 35,
                     height: isSelected ? 45 : 35,
-                    borderRadius: 20,
+                    borderRadius: 25,
                     borderWidth: 2,
                     borderColor: 'white',
                     backgroundColor: colors.blank
