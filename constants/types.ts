@@ -1,5 +1,6 @@
 export type Walk = {
     id: string;
+    created_at: string; 
     user_id: string;
     start_location?: string;
     end_location?: string;

@@ -31,7 +31,7 @@ const Activity = () => {
             .select("*")
             .eq("user_id", user.id)
             .in("status", ["active", "upcoming"])
-            .order("start_time", { ascending: true });
+            .order("created_at", { ascending: false });
 
         if (error) {
             console.error("Error fetching walks:", error.message);
@@ -40,7 +40,8 @@ const Activity = () => {
         }
     }, [user]);
 
-    const activeWalk = walks[0] ?? null;
+    const activeWalk = walks.find(w => w.status === "active") ?? null;
+    const upcomingWalk = walks.find(w => w.status === "upcoming") ?? null;
 
     useEffect(() => {
         if (!activeWalk || activeWalk.status !== "active") return;
@@ -82,8 +83,9 @@ const Activity = () => {
 
     useFocusEffect(
         useCallback(() => {
+            if (!user) return;
             fetchMyWalks();
-        }, [fetchMyWalks])
+        }, [user,fetchMyWalks, fetchPastWalks])
     );
 
     useEffect(() => {
@@ -101,6 +103,15 @@ const Activity = () => {
         await Promise.all([fetchMyWalks(), fetchPastWalks()]);
         setRefreshing(false);
     };
+
+    const formatTime = (iso: string) =>
+        new Date(iso).toLocaleString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
 
     const endWalk = async () => {
         if (!activeWalk) return;
@@ -155,18 +166,26 @@ const Activity = () => {
                                     { backgroundColor: `${colors.primary[500]}1A` },
                                 ]}
                             >
-                                <Ionicons name="navigate-outline" size={25} color={colors.primary[700]} />
+                                <Ionicons name={upcomingWalk ? "time-outline" : "navigate-outline"} size={25} color={colors.primary[700]} />
                             </View>
 
                             <Text style={[styles.heroTitle, { color: colors.text.primary }]}>
-                                No active walk
+                                {upcomingWalk ? "Upcoming walk" : "No active walk"}
                             </Text>
 
                             <Text style={[styles.heroSubtitle, { color: colors.text.secondary }]}>
-                                Start a walk from the Map to see it here
+                                {upcomingWalk
+                                    ? `${upcomingWalk.start_location} → ${upcomingWalk.end_location}`
+                                    : "Start a walk from the Map to see it here"}
                             </Text>
-                        </View>
 
+                            {upcomingWalk && (
+                            <Text style={[styles.heroSubtitle, { color: colors.text.secondary, marginTop: 6 }]}>
+                                Starts {formatTime(upcomingWalk.start_time)}
+                            </Text>
+                        )}
+
+                        </View>
                         {pastWalks.length > 0 && (
                             <View style={styles.historySection}>
                                 <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
@@ -224,7 +243,9 @@ const Activity = () => {
                                 <Mapbox.Camera
                                     zoomLevel={14}
                                     centerCoordinate={
-                                        [activeWalk.start_lng, activeWalk.start_lat]
+                                        activeWalk.start_lng && activeWalk.start_lat
+                                            ? [activeWalk.start_lng, activeWalk.start_lat]
+                                            : UBC_CENTER_COORDINATE
                                     }
                                     animationMode="none"
                                 />
