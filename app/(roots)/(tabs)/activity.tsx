@@ -242,10 +242,8 @@ const Activity = () => {
                             >
                                 <Mapbox.Camera
                                     zoomLevel={14}
-                                    centerCoordinate={
-                                        activeWalk.start_lng && activeWalk.start_lat
-                                            ? [activeWalk.start_lng, activeWalk.start_lat]
-                                            : UBC_CENTER_COORDINATE
+                                    centerCoordinate={   
+                                             [activeWalk.start_lng, activeWalk.start_lat]   
                                     }
                                     animationMode="none"
                                 />
