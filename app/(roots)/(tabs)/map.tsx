@@ -21,6 +21,7 @@ const Map = () => {
     const { colors, isDark } = useTheme();
 
     const [campus] = useState<CampusConfig>(CAMPUSES.ubc);
+    const [focus, setFocus] = useState<[number, number]>(campus.center);
 
     const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
     const [startMarker, setStartMarker] = useState<{ lng: number; lat: number } | null>(null);
@@ -139,6 +140,16 @@ const Map = () => {
     }, []);
 
     useEffect(() => {
+        if (userLocation) {
+            setFocus(userLocation);
+        } else if (endMarker){
+            setFocus([endMarker.lng, endMarker.lat]);
+        } else {
+            setFocus(campus.center)
+        }
+    }, [userLocation, endMarker]);
+
+    useEffect(() => {
         if (didMountRef.current) {
             fetchRoute();
             console.log("Marker Effect Triggered: Fetching Route");
@@ -207,14 +218,17 @@ const Map = () => {
         }
     };
 
+    const styleURL = isDark
+        ? 'mapbox://styles/alongapp/cmldiepmw007101sz252obyok/draft'
+        : 'mapbox://styles/alongapp/cmlcnlosl006101szfwf099ap/draft';
+
     return (
         <View style={styles.container}>
             <Mapbox.MapView
+                key={styleURL}
                 style={styles.map}
                 attributionPosition={{ top: -24, left: 10 }}
-                styleURL={isDark
-                    ? 'mapbox://styles/alongapp/cmlc3oo6p009n01st2ubr6ybw'
-                    : Mapbox.StyleURL.Street}
+                styleURL={styleURL}
                 scaleBarEnabled={false}
                 onPress={handleMapPress}
                 onLongPress={handleMapLongPress}
@@ -227,8 +241,9 @@ const Map = () => {
                     animationMode="flyTo"
                     animationDuration={2000}
                     maxBounds={campus.maxBounds}
-                    centerCoordinate={campus.center}
+                    centerCoordinate={focus}
                     pitch={30}
+
                 />
 
                 <Mapbox.UserLocation
@@ -254,18 +269,30 @@ const Map = () => {
                 {route && (
                     <Mapbox.ShapeSource id="route" shape={route}>
                         <Mapbox.LineLayer
+                            id="route-line-halo"
+                            style={{
+                                lineColor: 'white',     
+                                lineWidth: 8,           
+                                lineOpacity: isLoadingRoute ? 0.15 : 0.3, 
+                                lineCap: 'round',
+                                lineJoin: 'round',
+                            }}
+                        />
+
+                        <Mapbox.LineLayer
                             id="route-line"
                             style={{
-                                lineColor: colors.secondary[300],
+                                lineColor: '#4dacff',
                                 lineWidth: 4,
                                 lineCap: 'round',
                                 lineJoin: 'round',
                                 lineDasharray: isLoadingRoute ? [2, 2] : [],
-                                lineOpacity: isLoadingRoute ? 0.5 : 1,
+                                lineOpacity: isLoadingRoute ? 0.5 : 1,     
                             }}
                         />
                     </Mapbox.ShapeSource>
                 )}
+
 
                 {startMarker && (
                     <Mapbox.PointAnnotation
