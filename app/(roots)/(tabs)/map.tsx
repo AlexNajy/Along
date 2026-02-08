@@ -37,6 +37,7 @@ const Map = () => {
     const [walks, setWalks] = useState<Walk[]>([]);
     const [selectedWalkId, setSelectedWalkId] = useState<string | null>(null);
 
+    // GET all upcoming walks
     const fetchWalks = async () => {
         try {
             const { data, error } = await supabase
@@ -55,6 +56,7 @@ const Map = () => {
         }
     };
 
+    // POST for route from OSR
     const fetchRoute = async () => {
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -115,6 +117,7 @@ const Map = () => {
         }
     };
 
+    // UPDATE walks on postgres realtime
     useEffect(() => {
         fetchWalks();
 
@@ -139,25 +142,27 @@ const Map = () => {
         };
     }, []);
 
+    // Set focus for camera
     useEffect(() => {
         if (userLocation) {
             setFocus(userLocation);
-        } else if (endMarker){
+        } else if (endMarker) {
             setFocus([endMarker.lng, endMarker.lat]);
         } else {
             setFocus(campus.center)
         }
     }, [userLocation, endMarker]);
 
+    // Reroute on marker change after moount
     useEffect(() => {
         if (didMountRef.current) {
             fetchRoute();
-            console.log("Marker Effect Triggered: Fetching Route");
         } else {
             didMountRef.current = true;
         }
     }, [startMarker, endMarker]);
 
+    // Reroute on user X meter stray 
     useEffect(() => {
         if (!userLocation || !endMarker || startMarker) return;
 
@@ -171,6 +176,7 @@ const Map = () => {
         }
     }, [userLocation]);
 
+    // Check point is in bounds
     const validatePoint = (lng: number, lat: number) => {
         if (!isPointInPolygon(lng, lat, campus.boundary)) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -179,6 +185,7 @@ const Map = () => {
         return true;
     };
 
+    // Set end marker
     const handleMapPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
         if (!validatePoint(lng, lat)) return;
@@ -187,6 +194,7 @@ const Map = () => {
         setEndMarker({ lng, lat });
     };
 
+    // Set start marker
     const handleMapLongPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
         if (!validatePoint(lng, lat)) return;
@@ -195,7 +203,7 @@ const Map = () => {
         setStartMarker({ lng, lat });
     };
 
-
+    // Remve marker
     const handleMarkerPress = (type: 'start' | 'end') => {
         if (type === 'start') {
             setStartMarker(null)
@@ -207,6 +215,7 @@ const Map = () => {
         }
     };
 
+    // Select walk
     const handleWalkPress = (walkId: string) => {
         if (selectedWalkId === walkId) {
             setSelectedWalkId(null);
@@ -218,12 +227,14 @@ const Map = () => {
         }
     };
 
+    // TODO put styles in .env
     const styleURL = isDark
         ? 'mapbox://styles/alongapp/cmldiepmw007101sz252obyok/draft'
         : 'mapbox://styles/alongapp/cmlcnlosl006101szfwf099ap/draft';
 
     return (
         <View style={styles.container}>
+            {/* Map */}
             <Mapbox.MapView
                 key={styleURL}
                 style={styles.map}
@@ -234,6 +245,7 @@ const Map = () => {
                 onLongPress={handleMapLongPress}
                 pitchEnabled={false}
             >
+                {/* Camera */}
                 <Mapbox.Camera
                     minZoomLevel={12}
                     maxZoomLevel={18}
@@ -246,6 +258,7 @@ const Map = () => {
 
                 />
 
+                {/* User */}
                 <Mapbox.UserLocation
                     visible={true}
                     showsUserHeadingIndicator={true}
@@ -254,6 +267,7 @@ const Map = () => {
                     }}
                 />
 
+                {/* Boundary */}
                 <Mapbox.ShapeSource id="campus-boundary" shape={campus.boundary}>
                     <Mapbox.LineLayer
                         id="campus-boundary-line"
@@ -266,14 +280,15 @@ const Map = () => {
                     />
                 </Mapbox.ShapeSource>
 
+                {/* Route */}
                 {route && (
                     <Mapbox.ShapeSource id="route" shape={route}>
                         <Mapbox.LineLayer
                             id="route-line-halo"
                             style={{
-                                lineColor: 'white',     
-                                lineWidth: 8,           
-                                lineOpacity: isLoadingRoute ? 0.15 : 0.3, 
+                                lineColor: 'white',
+                                lineWidth: 8,
+                                lineOpacity: isLoadingRoute ? 0.15 : 0.3,
                                 lineCap: 'round',
                                 lineJoin: 'round',
                             }}
@@ -287,13 +302,13 @@ const Map = () => {
                                 lineCap: 'round',
                                 lineJoin: 'round',
                                 lineDasharray: isLoadingRoute ? [2, 2] : [],
-                                lineOpacity: isLoadingRoute ? 0.5 : 1,     
+                                lineOpacity: isLoadingRoute ? 0.5 : 1,
                             }}
                         />
                     </Mapbox.ShapeSource>
                 )}
 
-
+                {/* Start Marker */}
                 {startMarker && (
                     <Mapbox.PointAnnotation
                         id="start-marker"
@@ -306,6 +321,8 @@ const Map = () => {
                         </View>
                     </Mapbox.PointAnnotation>
                 )}
+
+                {/* End Marker */}
                 {endMarker && (
                     <Mapbox.PointAnnotation
                         id="end-marker"
@@ -319,6 +336,7 @@ const Map = () => {
                     </Mapbox.PointAnnotation>
                 )}
 
+                {/* Walks */}
                 <WalkPins
                     walks={walks}
                     onWalkPress={handleWalkPress}
@@ -327,6 +345,7 @@ const Map = () => {
 
             </Mapbox.MapView>
 
+            {/* Create Walk */}
             {route && (
                 <View style={styles.button}>
                     <Button
