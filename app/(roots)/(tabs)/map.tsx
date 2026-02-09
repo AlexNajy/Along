@@ -37,6 +37,15 @@ const Map = () => {
     const [walks, setWalks] = useState<Walk[]>([]);
     const [selectedWalkId, setSelectedWalkId] = useState<string | null>(null);
 
+    // Ensure focus is always valid coordinates
+    const safeFocus = focus && 
+        typeof focus[0] === 'number' && 
+        typeof focus[1] === 'number' && 
+        !isNaN(focus[0]) && 
+        !isNaN(focus[1]) 
+        ? focus 
+        : campus.center;
+
     // GET all upcoming walks
     const fetchWalks = async () => {
         try {
@@ -144,16 +153,21 @@ const Map = () => {
 
     // Set focus for camera
     useEffect(() => {
-        if (userLocation) {
-            setFocus(userLocation);
+        if (userLocation && userLocation.length === 2) {
+            const [lng, lat] = userLocation;
+            if (isPointInPolygon(lng, lat, campus.boundary)) {
+                setFocus(userLocation);
+            } else {
+                setFocus(campus.center);
+            }
         } else if (endMarker) {
             setFocus([endMarker.lng, endMarker.lat]);
         } else {
             setFocus(campus.center)
         }
-    }, [userLocation, endMarker]);
+    }, [userLocation, endMarker, campus.center]);
 
-    // Reroute on marker change after moount
+    // Reroute on marker change after mount
     useEffect(() => {
         if (didMountRef.current) {
             fetchRoute();
@@ -203,7 +217,7 @@ const Map = () => {
         setStartMarker({ lng, lat });
     };
 
-    // Remve marker
+    // Remove marker
     const handleMarkerPress = (type: 'start' | 'end') => {
         if (type === 'start') {
             setStartMarker(null)
@@ -253,7 +267,7 @@ const Map = () => {
                     animationMode="flyTo"
                     animationDuration={2000}
                     maxBounds={campus.maxBounds}
-                    centerCoordinate={focus}
+                    centerCoordinate={safeFocus}
                     pitch={30}
 
                 />
@@ -263,7 +277,11 @@ const Map = () => {
                     visible={true}
                     showsUserHeadingIndicator={true}
                     onUpdate={(location) => {
-                        setUserLocation([location.coords.longitude, location.coords.latitude]);
+                        const lng = location.coords.longitude;
+                        const lat = location.coords.latitude;
+                        if (typeof lng === 'number' && typeof lat === 'number' && !isNaN(lng) && !isNaN(lat)) {
+                            setUserLocation([lng, lat]);
+                        }
                     }}
                 />
 
