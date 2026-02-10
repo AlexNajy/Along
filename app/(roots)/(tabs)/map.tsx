@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Walk } from "@/constants/types";
 import { CAMPUSES, CampusConfig } from "@/constants/campuses";
+import { useRouteAnimation } from "@/hooks/useRouteAnimation";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
@@ -36,8 +37,7 @@ const Map = () => {
     const [walks, setWalks] = useState<Walk[]>([]);
     const [selectedWalkId, setSelectedWalkId] = useState<string | null>(null);
 
-    const [animatedRoute, setAnimatedRoute] = useState<any>(null);
-    const animationProgress = useRef(new Animated.Value(0)).current;
+    const { animatedRoute: animatedWalkRoute, animateRoute, clearAnimation } = useRouteAnimation();
 
     // Get value of selected walk
     const selectedWalk = selectedWalkId
@@ -52,47 +52,6 @@ const Map = () => {
         !isNaN(focus[1])
         ? focus
         : campus.center;
-
-    // Draw route
-    const animateRoute = (fullRoute: any) => {
-        if (!fullRoute?.geometry?.coordinates) return;
-
-        const coordinates = fullRoute.geometry.coordinates;
-        const totalPoints = coordinates.length;
-
-        animationProgress.setValue(0);
-        setAnimatedRoute({
-            ...fullRoute,
-            geometry: {
-                ...fullRoute.geometry,
-                coordinates: [coordinates[0]] 
-            }
-        });
-
-        Animated.timing(animationProgress, {
-            toValue: 1,
-            duration: 1500,
-            useNativeDriver: false,
-        }).start();
-
-        const listenerId = animationProgress.addListener(({ value }) => {
-            const pointsToShow = Math.floor(value * totalPoints);
-            const visibleCoordinates = coordinates.slice(0, Math.max(1, pointsToShow));
-
-            setAnimatedRoute({
-                ...fullRoute,
-                geometry: {
-                    ...fullRoute.geometry,
-                    coordinates: visibleCoordinates
-                }
-            });
-        });
-
-        setTimeout(() => {
-            animationProgress.removeListener(listenerId);
-            setAnimatedRoute(fullRoute); 
-        }, 1500);
-    };
 
     // GET all upcoming walks
     const fetchWalks = async () => {
@@ -121,7 +80,6 @@ const Map = () => {
 
         if (!endMarker || (!startMarker && !userLocation)) {
             setRoute(null);
-            setAnimatedRoute(null);
             return;
         }
 
@@ -142,7 +100,6 @@ const Map = () => {
             }
         };
         setRoute(straightLine);
-        setAnimatedRoute(straightLine);
 
         try {
             const res = await fetch(
@@ -165,8 +122,7 @@ const Map = () => {
             }
 
             const geojson = await res.json();
-            setRoute(geojson);
-            animateRoute(geojson);
+            setRoute(geojson); 
             setIsLoadingRoute(false);
         } catch (err) {
             if (err instanceof Error && err.name === 'AbortError') {
@@ -259,6 +215,7 @@ const Map = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setEndMarker({ lng, lat });
         setSelectedWalkId(null);
+        clearAnimation(); 
     };
 
     // Set start marker
@@ -286,16 +243,14 @@ const Map = () => {
     const handleWalkPress = (walkId: string) => {
         if (selectedWalkId === walkId) {
             setSelectedWalkId(null);
-            console.log('Deselected walk');
+            clearAnimation();
         } else {
-            setSelectedWalkId(walkId);
             const selectedWalk = walks.find(w => w.id === walkId);
-            console.log('Selected walk:', selectedWalk);
-            
             setEndMarker(null);
             setStartMarker(null);
             setRoute(null);
-            setAnimatedRoute(null); 
+
+            setSelectedWalkId(walkId);
 
             if (selectedWalk?.route) {
                 animateRoute(selectedWalk.route); 
@@ -320,6 +275,9 @@ const Map = () => {
                 onPress={handleMapPress}
                 onLongPress={handleMapLongPress}
                 pitchEnabled={false}
+                gestureSettings={{
+                    doubleTapToZoomInEnabled: false  
+                }}
             >
                 {/* Camera */}
                 <Mapbox.Camera
@@ -360,8 +318,8 @@ const Map = () => {
                 </Mapbox.ShapeSource>
 
                 {/* User Route */}
-                {animatedRoute && !selectedWalkId && (
-                    <Mapbox.ShapeSource id="route" shape={animatedRoute}>
+                {route && !selectedWalkId && (
+                    <Mapbox.ShapeSource id="route" shape={route}>
                         <Mapbox.LineLayer
                             id="route-line-halo"
                             style={{
@@ -388,8 +346,8 @@ const Map = () => {
                 )}
 
                 {/* Selected Route */}
-                {selectedWalk && animatedRoute && selectedWalkId && (
-                    <Mapbox.ShapeSource id="selected-walk-route" shape={animatedRoute}>
+                {animatedWalkRoute && selectedWalkId && (
+                    <Mapbox.ShapeSource id="selected-walk-route" shape={animatedWalkRoute}>
                         <Mapbox.LineLayer
                             id="selected-walk-route-halo"
                             style={{
@@ -411,6 +369,7 @@ const Map = () => {
                         />
                     </Mapbox.ShapeSource>
                 )}
+
 
 
                 {/* Start Marker */}

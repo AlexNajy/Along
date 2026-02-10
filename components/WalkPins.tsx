@@ -70,8 +70,8 @@ const WalkPins: React.FC<Props> = ({ walks, onWalkPress, selectedWalkId }) => {
                     uri: avatars[walk.user_id],
                   }}
                   style={{
-                    width: isSelected ? 45 : 35,
-                    height: isSelected ? 45 : 35,
+                    width: isSelected ? 50 : 40,
+                    height: isSelected ? 50 : 40,
                     borderRadius: 25,
                     borderWidth: 2,
                     borderColor: 'white',
