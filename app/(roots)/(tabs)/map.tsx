@@ -32,7 +32,8 @@ const Map = () => {
 
     const lastRoutedLocation = useRef<[number, number] | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
-    const didMountRef = useRef(false);
+    const didMountRef = useRef(false);  
+    const cameraRef = useRef<Mapbox.Camera>(null);
 
     const [walks, setWalks] = useState<Walk[]>([]);
     const [selectedWalkId, setSelectedWalkId] = useState<string | null>(null);
@@ -159,9 +160,44 @@ const Map = () => {
         };
     }, []);
 
-    // Set focus for camera
+    // Fovus on selected route
     useEffect(() => {
-        if (userLocation && userLocation.length === 2) {
+        if (selectedWalk?.route?.geometry?.coordinates) {
+            const coordinates = selectedWalk.route.geometry.coordinates;
+            
+            const lngs = coordinates.map((coord: [number, number]) => coord[0]);
+            const lats = coordinates.map((coord: [number, number]) => coord[1]);
+            
+            const minLng = Math.min(...lngs);
+            const maxLng = Math.max(...lngs);
+            const minLat = Math.min(...lats);
+            const maxLat = Math.max(...lats);
+
+            cameraRef.current?.setCamera({
+                bounds: {
+                    ne: [maxLng, maxLat],
+                    sw: [minLng, minLat],
+                    paddingTop: 80,
+                    paddingRight: 60,
+                    paddingBottom: 200,
+                    paddingLeft: 60,
+                },
+                pitch: 45,
+            });
+        } else if (!selectedWalkId) {
+            if (userLocation) {
+                setFocus(userLocation);
+            } else {
+                setFocus(campus.center);
+            }
+        }
+    }, [selectedWalk, selectedWalkId]);
+
+    // Set focus point for camera
+    useEffect(() => {
+        if (selectedWalkId) return;
+
+        if (userLocation) {
             const [lng, lat] = userLocation;
             if (isPointInPolygon(lng, lat, campus.boundary)) {
                 setFocus(userLocation);
@@ -173,7 +209,7 @@ const Map = () => {
         } else {
             setFocus(campus.center)
         }
-    }, [userLocation, endMarker, campus.center]);
+    }, [userLocation, endMarker, campus.center, selectedWalkId]);
 
     // Reroute on marker change after mount
     useEffect(() => {
@@ -198,6 +234,13 @@ const Map = () => {
         }
     }, [userLocation]);
 
+    // Clear animated route
+    useEffect(() => {
+        if (!selectedWalkId) {
+            clearAnimation();
+        }
+    }, [selectedWalkId]);
+
     // Check point is in bounds
     const validatePoint = (lng: number, lat: number) => {
         if (!isPointInPolygon(lng, lat, campus.boundary)) {
@@ -215,7 +258,6 @@ const Map = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setEndMarker({ lng, lat });
         setSelectedWalkId(null);
-        clearAnimation(); 
     };
 
     // Set start marker
@@ -243,7 +285,6 @@ const Map = () => {
     const handleWalkPress = (walkId: string) => {
         if (selectedWalkId === walkId) {
             setSelectedWalkId(null);
-            clearAnimation();
         } else {
             const selectedWalk = walks.find(w => w.id === walkId);
             setEndMarker(null);
@@ -281,6 +322,7 @@ const Map = () => {
             >
                 {/* Camera */}
                 <Mapbox.Camera
+                    ref={cameraRef}
                     minZoomLevel={12}
                     maxZoomLevel={18}
                     zoomLevel={15}
@@ -361,7 +403,7 @@ const Map = () => {
                         <Mapbox.LineLayer
                             id="selected-walk-route-line"
                             style={{
-                                lineColor: '#A855F7',
+                                lineColor: '#4dacff',
                                 lineWidth: 5,
                                 lineCap: 'round',
                                 lineJoin: 'round',
