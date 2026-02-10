@@ -12,7 +12,6 @@ import * as Haptics from 'expo-haptics';
 import { Walk } from "@/constants/types";
 import { CAMPUSES, CampusConfig } from "@/constants/campuses";
 
-
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
 const USER_REROUTE_METERS = 10;
@@ -36,14 +35,19 @@ const Map = () => {
 
     const [walks, setWalks] = useState<Walk[]>([]);
     const [selectedWalkId, setSelectedWalkId] = useState<string | null>(null);
+    
+    // Get value of selected walk
+    const selectedWalk = selectedWalkId 
+        ? walks.find(w => w.id === selectedWalkId) 
+        : null;
 
     // Ensure focus is always valid coordinates
-    const safeFocus = focus && 
-        typeof focus[0] === 'number' && 
-        typeof focus[1] === 'number' && 
-        !isNaN(focus[0]) && 
-        !isNaN(focus[1]) 
-        ? focus 
+    const safeFocus = focus &&
+        typeof focus[0] === 'number' &&
+        typeof focus[1] === 'number' &&
+        !isNaN(focus[0]) &&
+        !isNaN(focus[1])
+        ? focus
         : campus.center;
 
     // GET all upcoming walks
@@ -199,13 +203,14 @@ const Map = () => {
         return true;
     };
 
-    // Set end marker
+    // Set end marker and clear selected walk
     const handleMapPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
         if (!validatePoint(lng, lat)) return;
 
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setEndMarker({ lng, lat });
+        setSelectedWalkId(null); 
     };
 
     // Set start marker
@@ -229,7 +234,7 @@ const Map = () => {
         }
     };
 
-    // Select walk
+    // Select walk and clear markers
     const handleWalkPress = (walkId: string) => {
         if (selectedWalkId === walkId) {
             setSelectedWalkId(null);
@@ -238,6 +243,10 @@ const Map = () => {
             setSelectedWalkId(walkId);
             const selectedWalk = walks.find(w => w.id === walkId);
             console.log('Selected walk:', selectedWalk);
+            
+            setEndMarker(null);
+            setStartMarker(null);
+            setRoute(null);
         }
     };
 
@@ -264,12 +273,11 @@ const Map = () => {
                     minZoomLevel={12}
                     maxZoomLevel={18}
                     zoomLevel={15}
+                    pitch={45}     
                     animationMode="flyTo"
                     animationDuration={2000}
                     maxBounds={campus.maxBounds}
                     centerCoordinate={safeFocus}
-                    pitch={30}
-
                 />
 
                 {/* User */}
@@ -298,8 +306,8 @@ const Map = () => {
                     />
                 </Mapbox.ShapeSource>
 
-                {/* Route */}
-                {route && (
+                {/* User Route */}
+                {route && !selectedWalkId && (
                     <Mapbox.ShapeSource id="route" shape={route}>
                         <Mapbox.LineLayer
                             id="route-line-halo"
@@ -321,6 +329,31 @@ const Map = () => {
                                 lineJoin: 'round',
                                 lineDasharray: isLoadingRoute ? [2, 2] : [],
                                 lineOpacity: isLoadingRoute ? 0.5 : 1,
+                            }}
+                        />
+                    </Mapbox.ShapeSource>
+                )}
+
+                {/* Selected Route */}
+                {selectedWalk?.route && (
+                    <Mapbox.ShapeSource id="selected-walk-route" shape={selectedWalk.route}>
+                        <Mapbox.LineLayer
+                            id="selected-walk-route-halo"
+                            style={{
+                                lineColor: 'white',
+                                lineWidth: 8,
+                                lineOpacity: 0.3,
+                                lineCap: 'round',
+                                lineJoin: 'round',
+                            }}
+                        />
+                        <Mapbox.LineLayer
+                            id="selected-walk-route-line"
+                            style={{
+                                lineColor: '#4dd3ca', 
+                                lineWidth: 5,
+                                lineCap: 'round',
+                                lineJoin: 'round',
                             }}
                         />
                     </Mapbox.ShapeSource>
@@ -364,7 +397,7 @@ const Map = () => {
             </Mapbox.MapView>
 
             {/* Create Walk */}
-            {route && (
+            {route && !selectedWalkId && (
                 <View style={styles.button}>
                     <Button
                         title={isLoadingRoute ? "Fetching..." : "Go Walk"}
@@ -374,6 +407,7 @@ const Map = () => {
                                 start: startMarker ? JSON.stringify(startMarker) : undefined,
                                 end: endMarker ? JSON.stringify(endMarker) : undefined,
                                 user: userLocation ? JSON.stringify({ lng: userLocation[0], lat: userLocation[1] }) : undefined,
+                                route: route ? JSON.stringify(route) : undefined, 
                             },
                         })}
                         variant="solid"

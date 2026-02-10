@@ -5,25 +5,22 @@ import { supabase } from "@/libs/supabase";
 import { useLocalSearchParams } from "expo-router";
 
 export default function createWalks() {
-    const [start, setStart] = useState("");
-    const [destination, setDestination] = useState("");
+    const [startLocation, setStartLocation] = useState("");
+    const [endLocation, setEndLocation] = useState("");
     const [minutesInput, setMinutesInput] = useState("");
     const [vibe, setVibe] = useState("chill");
     const maxTime = 1440;
 
     const params = useLocalSearchParams();
 
-    const start2 = params.start ? JSON.parse(Array.isArray(params.start) ? params.start[0] : params.start) : null;
+    const start = params.start ? JSON.parse(Array.isArray(params.start) ? params.start[0] : params.start) : null;
     const end = params.end ? JSON.parse(Array.isArray(params.end) ? params.end[0] : params.end) : null;
     const user = params.user ? JSON.parse(Array.isArray(params.user) ? params.user[0] : params.user) : null;
-
-    console.log("Start:", start2);
-    console.log("End:", end);
-    console.log("User:", user);
+    const route = params.route ? JSON.parse(Array.isArray(params.route) ? params.route[0] : params.route) : null;
 
     const canPost =
-        start.trim() !== "" &&
-        destination.trim() !== ""
+    startLocation.trim() !== "" &&
+    endLocation.trim() !== ""
 
     const calculateDepartureTime = () => {
         if (!minutesInput.trim()) return new Date();
@@ -81,13 +78,21 @@ export default function createWalks() {
             return minutesInput.trim() ? "upcoming" : "active";
         };
 
+        const startCoords = start || user; 
+        const endCoords = end;
+
         const walk = {
             user_id: user.id,
             created_at: new Date(),
-            start_location: start,
-            end_location: destination,
+            start_location: startLocation,
+            end_location: endLocation, 
             start_time: departureTime.toISOString(),
             status: createStatus(),
+            start_lng: startCoords?.lng,
+            start_lat: startCoords?.lat,
+            end_lng: endCoords?.lng,
+            end_lat: endCoords?.lat,
+            route: route, 
         }
 
         const { data, error } = await supabase.from("walks").insert([walk])
@@ -97,8 +102,8 @@ export default function createWalks() {
             Alert.alert("Error", error.message);
         } else {
             Alert.alert("Success", "Walk created!");
-            setStart("");
-            setDestination("");
+            setStartLocation("");
+            setEndLocation("");
             setMinutesInput("");
             setVibe("chill");
             router.replace("../(tabs)/activity");
@@ -125,8 +130,8 @@ export default function createWalks() {
                         Starting Location
                     </Text>
                     <TextInput
-                        value={start}
-                        onChangeText={setStart}
+                        value={startLocation}
+                        onChangeText={setStartLocation}
                         placeholder="Enter starting location"
                         placeholderTextColor={"#666876"}
                         className="h-14 rounded-2xl bg-background border border-black-200 px-4 text-lg font-rubik text-black-300"
@@ -139,8 +144,8 @@ export default function createWalks() {
                         Final Location
                     </Text>
                     <TextInput
-                        value={destination}
-                        onChangeText={setDestination}
+                        value={endLocation}
+                        onChangeText={setEndLocation}
                         placeholder="Enter destination location"
                         placeholderTextColor={"#666876"}
                         className="h-14 rounded-2xl bg-background border border-black-200 px-4 text-lg font-rubik text-black-300"

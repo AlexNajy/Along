@@ -10,6 +10,7 @@ export type Walk = {
     start_lat: number;
     end_lng: number;
     end_lat: number;
+    route?: any;
 }
 
 export type Profile = {
