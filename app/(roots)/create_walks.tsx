@@ -13,14 +13,18 @@ export default function createWalks() {
 
     const params = useLocalSearchParams();
 
-    const start = params.start ? JSON.parse(Array.isArray(params.start) ? params.start[0] : params.start) : null;
-    const end = params.end ? JSON.parse(Array.isArray(params.end) ? params.end[0] : params.end) : null;
-    const user = params.user ? JSON.parse(Array.isArray(params.user) ? params.user[0] : params.user) : null;
+    const startMarker = params.start ? JSON.parse(Array.isArray(params.start) ? params.start[0] : params.start) : null;
+    const endMarker = params.end ? JSON.parse(Array.isArray(params.end) ? params.end[0] : params.end) : null;
+    const userLocation = params.user ? JSON.parse(Array.isArray(params.user) ? params.user[0] : params.user) : null;
     const route = params.route ? JSON.parse(Array.isArray(params.route) ? params.route[0] : params.route) : null;
 
+    console.log(startMarker)
+    console.log(endMarker)
+    console.log(userLocation)
+
     const canPost =
-    startLocation.trim() !== "" &&
-    endLocation.trim() !== ""
+        startLocation.trim() !== "" &&
+        endLocation.trim() !== ""
 
     const calculateDepartureTime = () => {
         if (!minutesInput.trim()) return new Date();
@@ -78,21 +82,30 @@ export default function createWalks() {
             return minutesInput.trim() ? "upcoming" : "active";
         };
 
-        const startCoords = start || user; 
-        const endCoords = end;
+        const startCoords = startMarker ?? userLocation;
+
+        if (!startCoords?.lat || !startCoords?.lng) {
+            Alert.alert("Error", "Missing start coordinates");
+            return;
+        }
+
+        if (!endMarker?.lat || !endMarker?.lng) {
+            Alert.alert("Error", "Missing destination coordinates");
+            return;
+        }
 
         const walk = {
             user_id: user.id,
             created_at: new Date(),
             start_location: startLocation,
-            end_location: endLocation, 
+            end_location: endLocation,
             start_time: departureTime.toISOString(),
             status: createStatus(),
-            start_lng: startCoords?.lng,
-            start_lat: startCoords?.lat,
-            end_lng: endCoords?.lng,
-            end_lat: endCoords?.lat,
-            route: route, 
+            start_lng: Number(startCoords.lng),
+            start_lat: Number(startCoords.lat),
+            end_lng: Number(endMarker.lng),
+            end_lat: Number(endMarker.lat),
+            route: route,
         }
 
         const { data, error } = await supabase.from("walks").insert([walk])
