@@ -44,6 +44,34 @@ const Activity = () => {
     const upcomingWalk = walks.find(w => w.status === "upcoming") ?? null;
 
     useEffect(() => {
+        if (!upcomingWalk) return;
+
+        const checkAndActivate = async () => {
+            const startTime = new Date(upcomingWalk.start_time).getTime();
+            const now = Date.now();
+
+            if (now >= startTime) {
+                const { error } = await supabase
+                    .from("walks")
+                    .update({ status: "active" })
+                    .eq("id", upcomingWalk.id);
+
+                if (error) {
+                    console.error("Error activating walk:", error.message);
+                } else {
+                    await fetchMyWalks();
+                }
+            }
+        };
+        
+        checkAndActivate();
+        
+        const interval = setInterval(checkAndActivate, 10000);
+
+        return () => clearInterval(interval);
+    }, [upcomingWalk, fetchMyWalks]);
+
+    useEffect(() => {
         if (!activeWalk || activeWalk.status !== "active") return;
 
         const interval = setInterval(() => {
