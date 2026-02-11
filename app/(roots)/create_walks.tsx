@@ -18,10 +18,6 @@ export default function createWalks() {
     const userLocation = params.user ? JSON.parse(Array.isArray(params.user) ? params.user[0] : params.user) : null;
     const route = params.route ? JSON.parse(Array.isArray(params.route) ? params.route[0] : params.route) : null;
 
-    console.log(startMarker)
-    console.log(endMarker)
-    console.log(userLocation)
-
     const canPost =
         startLocation.trim() !== "" &&
         endLocation.trim() !== ""
