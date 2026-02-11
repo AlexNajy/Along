@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
-import { View, StyleSheet, Animated } from "react-native";
+import { View, StyleSheet } from "react-native";
 import Mapbox from '@rnmapbox/maps';
 import { distanceMeters, isPointInPolygon } from '@/libs/geometry';
 import Button from "@/components/Button";
@@ -19,33 +19,65 @@ const USER_REROUTE_METERS = 10;
 
 const Map = () => {
     const { colors, isDark } = useTheme();
-
     const [campus] = useState<CampusConfig>(CAMPUSES.ubc);
+    
+    const [cameraState, setCameraState] = useState<{
+        center: [number, number];
+        zoom: number;
+        pitch: number;
+    }>({
+        center: campus.center,
+        zoom: 15,
+        pitch: 30,
+    });
 
     const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
     const [startMarker, setStartMarker] = useState<{ lng: number; lat: number } | null>(null);
     const [endMarker, setEndMarker] = useState<{ lng: number; lat: number } | null>(null);
-
     const [route, setRoute] = useState<any>(null);
     const [isLoadingRoute, setIsLoadingRoute] = useState(false);
 
+    const cameraRef = useRef<Mapbox.Camera>(null);
     const lastRoutedLocation = useRef<[number, number] | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
-    const didMountRef = useRef(false);  
-    const cameraRef = useRef<Mapbox.Camera>(null);
-    const lastCameraPosition = useRef<[number, number]>(userLocation || campus.center);
+    const didMountRef = useRef(false);
 
     const [walks, setWalks] = useState<Walk[]>([]);
     const [selectedWalkId, setSelectedWalkId] = useState<string | null>(null);
 
     const { animatedRoute: animatedWalkRoute, animateRoute, clearAnimation } = useRouteAnimation();
 
-    // Get value of selected walk
-    const selectedWalk = selectedWalkId
-        ? walks.find(w => w.id === selectedWalkId)
-        : null;
+    const selectedWalk = selectedWalkId ? walks.find(w => w.id === selectedWalkId) : null;
 
-    // GET all upcoming walks
+    const fitToBounds = (routeGeoJSON: any) => {
+        if (!routeGeoJSON?.geometry?.coordinates) return;
+
+        const coordinates = routeGeoJSON.geometry.coordinates;
+        const lngs = coordinates.map((coord: [number, number]) => coord[0]);
+        const lats = coordinates.map((coord: [number, number]) => coord[1]);
+        
+        const minLng = Math.min(...lngs);
+        const maxLng = Math.max(...lngs);
+        const minLat = Math.min(...lats);
+        const maxLat = Math.max(...lats);
+        const center: [number, number] = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
+
+        setCameraState({ center, zoom: 15, pitch: 30 });
+
+        cameraRef.current?.setCamera({
+            bounds: {
+                ne: [maxLng, maxLat],
+                sw: [minLng, minLat],
+                paddingTop: 80,
+                paddingRight: 60,
+                paddingBottom: 200,
+                paddingLeft: 60,
+            },
+            pitch: 30,
+            animationDuration: 1000,
+        });
+    };
+
     const fetchWalks = async () => {
         try {
             const { data, error } = await supabase
@@ -64,7 +96,6 @@ const Map = () => {
         }
     };
 
-    // POST for route from OSR
     const fetchRoute = async () => {
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -75,23 +106,20 @@ const Map = () => {
             return;
         }
 
-        const start = startMarker
-            ? [startMarker.lng, startMarker.lat]
-            : userLocation!;
+        const start = startMarker ? [startMarker.lng, startMarker.lat] : userLocation!;
         const end = [endMarker.lng, endMarker.lat];
 
         const abortController = new AbortController();
         abortControllerRef.current = abortController;
 
         setIsLoadingRoute(true);
-        const straightLine = {
+        setRoute({
             type: "Feature",
             geometry: {
                 type: "LineString",
                 coordinates: [start, end]
             }
-        };
-        setRoute(straightLine);
+        });
 
         try {
             const res = await fetch(
@@ -114,83 +142,41 @@ const Map = () => {
             }
 
             const geojson = await res.json();
-            setRoute(geojson); 
+            setRoute(geojson);
+            fitToBounds(geojson);
             setIsLoadingRoute(false);
         } catch (err) {
-            if (err instanceof Error && err.name === 'AbortError') {
-                console.log('Route fetch cancelled');
-                return;
-            }
+            if (err instanceof Error && err.name === 'AbortError') return;
             console.error('Route fetch failed:', err);
             setIsLoadingRoute(false);
         }
     };
 
-    // UPDATE walks on postgres realtime
     useEffect(() => {
         fetchWalks();
-
-        const channel = supabase
-            .channel('walks-updates')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'walks',
-                },
-                (payload) => {
-                    console.log('Walks changed:', payload);
-                    fetchWalks();
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        const channel = supabase.channel('walks-updates').on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'walks' },
+            () => fetchWalks()
+        ).subscribe();
+        return () => { supabase.removeChannel(channel); };
     }, []);
 
     useEffect(() => {
-        if (!selectedWalkId && userLocation) {
+        if (userLocation && !selectedWalkId && !route) {
             const [lng, lat] = userLocation;
             if (isPointInPolygon(lng, lat, campus.boundary)) {
-                lastCameraPosition.current = userLocation;
+                setCameraState(prev => ({ ...prev, center: userLocation }));
             }
         }
-    }, [userLocation, selectedWalkId, campus.boundary]);
+    }, [userLocation, selectedWalkId, route, campus.boundary]);
 
-    // Fovus on selected route
     useEffect(() => {
-        if (selectedWalk?.route?.geometry?.coordinates) {
-            const coordinates = selectedWalk.route.geometry.coordinates;
-            
-            const lngs = coordinates.map((coord: [number, number]) => coord[0]);
-            const lats = coordinates.map((coord: [number, number]) => coord[1]);
-            
-            const minLng = Math.min(...lngs);
-            const maxLng = Math.max(...lngs);
-            const minLat = Math.min(...lats);
-            const maxLat = Math.max(...lats);
-
-            const center: [number, number] = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
-            lastCameraPosition.current = center; 
-
-            cameraRef.current?.setCamera({
-                bounds: {
-                    ne: [maxLng, maxLat],
-                    sw: [minLng, minLat],
-                    paddingTop: 80,
-                    paddingRight: 60,
-                    paddingBottom: 200,
-                    paddingLeft: 60,
-                },
-                pitch: 30,
-            });
+        if (selectedWalk?.route) {
+            fitToBounds(selectedWalk.route);
         }
-    }, [selectedWalk, selectedWalkId]);
+    }, [selectedWalk]);
 
-    // Reroute on marker change after mount
     useEffect(() => {
         if (didMountRef.current) {
             fetchRoute();
@@ -199,28 +185,21 @@ const Map = () => {
         }
     }, [startMarker, endMarker]);
 
-    // Reroute on user X meter stray 
     useEffect(() => {
         if (!userLocation || !endMarker || startMarker) return;
-
         const distance = lastRoutedLocation.current
             ? distanceMeters(lastRoutedLocation.current, userLocation)
             : Infinity;
-
         if (distance >= USER_REROUTE_METERS) {
             fetchRoute();
             lastRoutedLocation.current = userLocation;
         }
     }, [userLocation]);
 
-    // Clear animated route
     useEffect(() => {
-        if (!selectedWalkId) {
-            clearAnimation();
-        }
+        if (!selectedWalkId) clearAnimation();
     }, [selectedWalkId]);
 
-    // Check point is in bounds
     const validatePoint = (lng: number, lat: number) => {
         if (!isPointInPolygon(lng, lat, campus.boundary)) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -229,38 +208,32 @@ const Map = () => {
         return true;
     };
 
-    // Set end marker and clear selected walk
     const handleMapPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
         if (!validatePoint(lng, lat)) return;
-
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setEndMarker({ lng, lat });
         setSelectedWalkId(null);
     };
 
-    // Set start marker
     const handleMapLongPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
         if (!validatePoint(lng, lat)) return;
-
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setStartMarker({ lng, lat });
     };
 
-    // Remove marker
     const handleMarkerPress = (type: 'start' | 'end') => {
         if (type === 'start') {
-            setStartMarker(null)
+            setStartMarker(null);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         } else {
-            setEndMarker(startMarker)
-            setStartMarker(null)
+            setEndMarker(startMarker);
+            setStartMarker(null);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
         }
     };
 
-    // Select walk and clear markers
     const handleWalkPress = (walkId: string) => {
         if (selectedWalkId === walkId) {
             setSelectedWalkId(null);
@@ -269,23 +242,19 @@ const Map = () => {
             setEndMarker(null);
             setStartMarker(null);
             setRoute(null);
-
             setSelectedWalkId(walkId);
-
             if (selectedWalk?.route) {
-                animateRoute(selectedWalk.route); 
+                animateRoute(selectedWalk.route);
             }
         }
     };
 
-    // TODO put styles in .env
     const styleURL = isDark
         ? 'mapbox://styles/alongapp/cmldiepmw007101sz252obyok/draft'
         : 'mapbox://styles/alongapp/cmlcnlosl006101szfwf099ap/draft';
 
     return (
         <View style={styles.container}>
-            {/* Map */}
             <Mapbox.MapView
                 key={styleURL}
                 style={styles.map}
@@ -295,24 +264,20 @@ const Map = () => {
                 onPress={handleMapPress}
                 onLongPress={handleMapLongPress}
                 pitchEnabled={false}
-                gestureSettings={{
-                    doubleTapToZoomInEnabled: false  
-                }}
+                gestureSettings={{ doubleTapToZoomInEnabled: false }}
             >
-                {/* Camera */}
                 <Mapbox.Camera
                     ref={cameraRef}
                     minZoomLevel={12}
                     maxZoomLevel={18}
-                    zoomLevel={15}
-                    pitch={30}
+                    zoomLevel={cameraState.zoom}
+                    pitch={cameraState.pitch}
                     animationMode="flyTo"
                     animationDuration={2000}
                     maxBounds={campus.maxBounds}
-                    centerCoordinate={lastCameraPosition.current}
+                    centerCoordinate={cameraState.center}
                 />
 
-                {/* User */}
                 <Mapbox.UserLocation
                     visible={true}
                     showsUserHeadingIndicator={true}
@@ -325,7 +290,6 @@ const Map = () => {
                     }}
                 />
 
-                {/* Boundary */}
                 <Mapbox.ShapeSource id="campus-boundary" shape={campus.boundary}>
                     <Mapbox.LineLayer
                         id="campus-boundary-line"
@@ -338,7 +302,6 @@ const Map = () => {
                     />
                 </Mapbox.ShapeSource>
 
-                {/* User Route */}
                 {route && !selectedWalkId && (
                     <Mapbox.ShapeSource id="route" shape={route}>
                         <Mapbox.LineLayer
@@ -351,7 +314,6 @@ const Map = () => {
                                 lineJoin: 'round',
                             }}
                         />
-
                         <Mapbox.LineLayer
                             id="route-line"
                             style={{
@@ -366,7 +328,6 @@ const Map = () => {
                     </Mapbox.ShapeSource>
                 )}
 
-                {/* Selected Route */}
                 {animatedWalkRoute && selectedWalkId && (
                     <Mapbox.ShapeSource id="selected-walk-route" shape={animatedWalkRoute}>
                         <Mapbox.LineLayer
@@ -391,9 +352,6 @@ const Map = () => {
                     </Mapbox.ShapeSource>
                 )}
 
-
-
-                {/* Start Marker */}
                 {startMarker && (
                     <Mapbox.PointAnnotation
                         id="start-marker"
@@ -407,7 +365,6 @@ const Map = () => {
                     </Mapbox.PointAnnotation>
                 )}
 
-                {/* End Marker */}
                 {endMarker && (
                     <Mapbox.PointAnnotation
                         id="end-marker"
@@ -421,16 +378,13 @@ const Map = () => {
                     </Mapbox.PointAnnotation>
                 )}
 
-                {/* Walks */}
                 <WalkPins
                     walks={walks}
                     onWalkPress={handleWalkPress}
                     selectedWalkId={selectedWalkId}
                 />
-
             </Mapbox.MapView>
 
-            {/* Create Walk */}
             {route && !selectedWalkId && (
                 <View style={styles.button}>
                     <Button
