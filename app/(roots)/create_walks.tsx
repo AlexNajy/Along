@@ -92,7 +92,7 @@ export default function CreateWalks() {
 
         const reverseGeocode = async (lat: number, lng: number) => {
             const {data, error} = await supabase.functions.invoke("reverse-geocode", {
-                body: { lng, lat },
+                body: { lat, lng },
             });
 
             if (error) throw error;
@@ -108,8 +108,8 @@ export default function CreateWalks() {
                 reverseGeocode(endCoords.lat, endCoords.lng)
             ]);
             
-            startLocationName = startName ?? startLocation;
-            endLocationName = endName ?? endLocation;
+            startLocationName = startName ?? "Start start";
+            endLocationName = endName ?? "Selected Location";
         } catch (error) {
             startLocationName = `${startCoords.lat.toFixed(5)}, ${startCoords.lng.toFixed(5)}`;
             endLocationName = `${endCoords.lat.toFixed(5)}, ${endCoords.lng.toFixed(5)}`;
