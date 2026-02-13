@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import { Text, View, Pressable, TextInput, Alert } from "react-native";
-import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
-import { useLocalSearchParams } from "expo-router";
+import {router, useLocalSearchParams } from "expo-router";
 
-export default function createWalks() {
+export default function CreateWalks() {
     const [startLocation, setStartLocation] = useState("");
     const [endLocation, setEndLocation] = useState("");
     const [minutesInput, setMinutesInput] = useState("");
@@ -23,10 +22,10 @@ export default function createWalks() {
         endLocation.trim() !== ""
 
     const calculateDepartureTime = () => {
-        if (!minutesInput.trim()) return new Date();
+        if (!minutesInput.trim() || minutesInput.trim() === "0") return new Date();
 
-        const minutes = parseInt(minutesInput);
-        if (isNaN(minutes) || minutes <= 0) return null;
+        const minutes = parseInt(minutesInput, 10);
+        if (isNaN(minutes) || minutes < 0) return null;
 
         const departureTime = new Date();
         departureTime.setMinutes(departureTime.getMinutes() + minutes);
@@ -78,29 +77,57 @@ export default function createWalks() {
             return minutesInput.trim() ? "upcoming" : "active";
         };
 
-        const startCoords = startMarker ?? userLocation;
+        const startCoords = startMarker ?? userLocation ?? null;
+        const endCoords = endMarker ?? null;
 
         if (!startCoords?.lat || !startCoords?.lng) {
             Alert.alert("Error", "Missing start coordinates");
             return;
         }
 
-        if (!endMarker?.lat || !endMarker?.lng) {
+        if (!endCoords?.lat || !endCoords?.lng) {
             Alert.alert("Error", "Missing destination coordinates");
             return;
         }
 
+        const reverseGeocode = async (lat: number, lng: number) => {
+            const {data, error} = await supabase.functions.invoke("reverse-geocode", {
+                body: { lng, lat },
+            });
+
+            if (error) throw error;
+            return(data?.place_name as string | null) ?? null;
+        };
+
+        let startLocationName = "";
+        let endLocationName = "";
+
+        try {
+            const [startName, endName] = await Promise.all([
+                reverseGeocode(startCoords.lat, startCoords.lng),
+                reverseGeocode(endCoords.lat, endCoords.lng)
+            ]);
+            
+            startLocationName = startName ?? startLocation;
+            endLocationName = endName ?? endLocation;
+        } catch (error) {
+            startLocationName = `${startCoords.lat.toFixed(5)}, ${startCoords.lng.toFixed(5)}`;
+            endLocationName = `${endCoords.lat.toFixed(5)}, ${endCoords.lng.toFixed(5)}`;
+        }
+
+
+
         const walk = {
             user_id: user.id,
             created_at: new Date(),
-            start_location: startLocation,
-            end_location: endLocation,
+            start_location: startLocationName,
+            end_location: endLocationName,
             start_time: departureTime.toISOString(),
             status: createStatus(),
             start_lng: Number(startCoords.lng),
             start_lat: Number(startCoords.lat),
-            end_lng: Number(endMarker.lng),
-            end_lat: Number(endMarker.lat),
+            end_lng: Number(endCoords.lng),
+            end_lat: Number(endCoords.lat),
             route: route,
         }
 
@@ -200,6 +227,12 @@ export default function createWalks() {
 
                     <View className="mt-3 flex-row space-x-2">
                         <Pressable
+                                onPress={() => setMinutesInput("0")}
+                                className="mr-1 px-4 py-2 rounded-full bg-background border border-black-200"
+                            >
+                                <Text className="text-sm font-rubik text-black-300">Now</Text>
+                            </Pressable>
+                        <Pressable
                             onPress={() => setMinutesInput("5")}
                             className="mr-1 px-4 py-2 rounded-full bg-background border border-black-200"
                         >
@@ -229,7 +262,7 @@ export default function createWalks() {
                 {/* Vibe Selection */}
                 <View className="mb-10">
                     <Text className="text-2xl font-rubikMedium text-black-300 mb-4">
-                        Walk Vibe
+                        Walk settings
                     </Text>
                     <View className="flex-row justify-between px-1">
                         <Pressable
@@ -245,7 +278,7 @@ export default function createWalks() {
                                     : "text-black-300"
                                     }`}
                             >
-                                Chill
+                                Private
                             </Text>
                         </Pressable>
 
@@ -262,7 +295,7 @@ export default function createWalks() {
                                     : "text-black-300"
                                     }`}
                             >
-                                Energetic
+                                Public
                             </Text>
                         </Pressable>
                     </View>
