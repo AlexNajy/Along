@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Text, View, Pressable, TextInput, Alert } from "react-native";
 import { supabase } from "@/libs/supabase";
 import {router, useLocalSearchParams } from "expo-router";
@@ -56,6 +56,47 @@ export default function CreateWalks() {
         }
     };
 
+    const reverseGeocode = async (lat: number, lng: number) => {
+        const { data, error } = await supabase.functions.invoke("reverse_geocode", {
+          body: { lng, lat },
+        });
+
+
+        console.log("reverse data:", data);
+        console.log("reverse error:", error);
+      
+        if (error) throw error;
+        return (data?.place_name as string | null) ?? null;
+      };
+      
+
+    useEffect(() => {
+        const run = async () => {
+          const startCoords = startMarker ?? userLocation ?? null;
+          const endCoords = endMarker ?? null;
+      
+          if (!startCoords?.lat || !startCoords?.lng) return;
+          if (!endCoords?.lat || !endCoords?.lng) return;
+      
+          try {
+            const [startName, endName] = await Promise.all([
+              reverseGeocode(startCoords.lat, startCoords.lng),
+              reverseGeocode(endCoords.lat, endCoords.lng),
+            ]);
+      
+            setStartLocation(startName ?? `${startCoords.lat.toFixed(5)}, ${startCoords.lng.toFixed(5)}`);
+            setEndLocation(endName ?? `${endCoords.lat.toFixed(5)}, ${endCoords.lng.toFixed(5)}`);
+          } catch {
+            setStartLocation(`${startCoords.lat.toFixed(5)}, ${startCoords.lng.toFixed(5)}`);
+            setEndLocation(`${endCoords.lat.toFixed(5)}, ${endCoords.lng.toFixed(5)}`);
+          }
+        };
+      
+        run();
+      }, [startMarker, endMarker, userLocation]);
+
+ 
+
     const handleCreateWalk = async () => {
         const {
             data: { user },
@@ -90,38 +131,13 @@ export default function CreateWalks() {
             return;
         }
 
-        const reverseGeocode = async (lat: number, lng: number) => {
-            const {data, error} = await supabase.functions.invoke("reverse-geocode", {
-                body: { lat, lng },
-            });
-
-            if (error) throw error;
-            return(data?.place_name as string | null) ?? null;
-        };
-
-        let startLocationName = "";
-        let endLocationName = "";
-
-        try {
-            const [startName, endName] = await Promise.all([
-                reverseGeocode(startCoords.lat, startCoords.lng),
-                reverseGeocode(endCoords.lat, endCoords.lng)
-            ]);
-            
-            startLocationName = startName ?? "Start start";
-            endLocationName = endName ?? "Selected Location";
-        } catch (error) {
-            startLocationName = `${startCoords.lat.toFixed(5)}, ${startCoords.lng.toFixed(5)}`;
-            endLocationName = `${endCoords.lat.toFixed(5)}, ${endCoords.lng.toFixed(5)}`;
-        }
-
 
 
         const walk = {
             user_id: user.id,
             created_at: new Date(),
-            start_location: startLocationName,
-            end_location: endLocationName,
+            start_location: startLocation,
+            end_location: endLocation,
             start_time: departureTime.toISOString(),
             status: createStatus(),
             start_lng: Number(startCoords.lng),
