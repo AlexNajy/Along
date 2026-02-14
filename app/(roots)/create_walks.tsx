@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { Text, View, Pressable, TextInput, Alert } from "react-native";
 import { supabase } from "@/libs/supabase";
-import {router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useReverseGeocode } from "@/hooks/useReverseGeocode";
+import { KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from "react-native";
 
 export default function CreateWalks() {
     const [minutesInput, setMinutesInput] = useState("");
@@ -61,16 +62,16 @@ export default function CreateWalks() {
 
     const reverseGeocode = async (lat: number, lng: number) => {
         const { data, error } = await supabase.functions.invoke("reverse_geocode", {
-          body: { lng, lat },
+            body: { lng, lat },
         });
 
 
         console.log("reverse data:", data);
         console.log("reverse error:", error);
-      
+
         if (error) throw error;
         return (data?.place_name as string | null) ?? null;
-      };
+    };
 
     const handleCreateWalk = async () => {
         const {
@@ -134,177 +135,181 @@ export default function CreateWalks() {
     };
 
     return (
-        <View className="flex-1 bg-white">
-            {/* Header */}
-            <View className="flex-row items-center px-5 mt-12 mb-8">
-                <Pressable
-                    onPress={() => router.back()}
-                    className="h-10 w-10 rounded-full bg-background border border-black-200 items-center justify-center"
-                >
-                    <Text className="text-xl text-black-300">←</Text>
-                </Pressable>
-            </View>
-
-            {/* Form Content */}
-            <View className="px-5">
-                {/* Starting Location */}
-                <View className="mb-6">
-                    <Text className="text-2xl font-rubikMedium text-black-300 mb-2">
-                        Starting Location
-                    </Text>
-                    <TextInput
-                        value={isLoading ? "Loading..." : startLocation}
-                        editable={false}
-                        placeholder="Enter starting location"
-                        placeholderTextColor={"#666876"}
-                        className="h-14 rounded-2xl bg-background border border-black-200 px-4 text-lg font-rubik text-black-300"
-                    />
-                </View>
-
-                {/* Destination */}
-                <View className="mb-6">
-                    <Text className="text-2xl font-rubikMedium text-black-300 mb-2">
-                        Final Location
-                    </Text>
-                    <TextInput
-                        value={isLoading ? "Loading..." : endLocation}
-                        editable={false}
-                        placeholder="Enter destination location"
-                        placeholderTextColor={"#666876"}
-                        className="h-14 rounded-2xl bg-background border border-black-200 px-4 text-lg font-rubik text-black-300"
-                    />
-                </View>
-
-                {/* Departure Time */}
-                <View className="mb-6">
-                    <Text className="text-2xl font-rubikMedium text-black-300 mb-2">
-                        Leaving in
-                    </Text>
-
-                    {/* Time Preview */}
-                    <View className="mb-3">
-                        <Text className="text-base font-rubik text-primary-300">
-                            <Text className="text-base font-rubikMedium text-primary-300">
-                                {minutesInput.trim() ? getDisplayTime() : `Current time: ${formatTime(new Date())}`}
-                            </Text>
-                        </Text>
-                    </View>
-
-                    <View className="flex-row items-center">
-                        <TextInput
-                            value={minutesInput}
-                            onChangeText={(text) => {
-                                const numericText = text.replace(/[^0-9]/g, '');
-                                const numericValue = parseInt(numericText);
-
-                                if (numericText === '') {
-                                    setMinutesInput('');
-                                } else if (numericValue > maxTime) {
-                                    setMinutesInput(maxTime.toString());
-                                } else {
-                                    setMinutesInput(numericText);
-                                }
-                            }}
-                            placeholder="Enter minutes from now"
-                            placeholderTextColor="#666876"
-                            keyboardType="number-pad"
-                            className="h-14 rounded-2xl bg-background border border-black-200 px-4 text-lg font-rubik text-black-300 flex-1 mr-3"
-                        />
-                    </View>
-
-                    <View className="mt-3 flex-row space-x-2">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View className="flex-1 bg-white">
+                    {/* Header */}
+                    <View className="flex-row items-center px-5 mt-12 mb-8">
                         <Pressable
-                                onPress={() => setMinutesInput("0")}
-                                className="mr-1 px-4 py-2 rounded-full bg-background border border-black-200"
+                            onPress={() => router.back()}
+                            className="h-10 w-10 rounded-full bg-background border border-black-200 items-center justify-center"
+                        >
+                            <Text className="text-xl text-black-300">←</Text>
+                        </Pressable>
+                    </View>
+
+                    {/* Form Content */}
+                    <View className="px-5">
+                        {/* Starting Location */}
+                        <View className="mb-6">
+                            <Text className="text-2xl font-rubikMedium text-black-300 mb-2">
+                                Starting Location
+                            </Text>
+                            <TextInput
+                                value={isLoading ? "Loading..." : startLocation}
+                                editable={false}
+                                placeholder="Enter starting location"
+                                placeholderTextColor={"#666876"}
+                                className="h-14 rounded-2xl bg-background border border-black-200 px-4 text-lg font-rubik text-black-300"
+                            />
+                        </View>
+
+                        {/* Destination */}
+                        <View className="mb-6">
+                            <Text className="text-2xl font-rubikMedium text-black-300 mb-2">
+                                Final Location
+                            </Text>
+                            <TextInput
+                                value={isLoading ? "Loading..." : endLocation}
+                                editable={false}
+                                placeholder="Enter destination location"
+                                placeholderTextColor={"#666876"}
+                                className="h-14 rounded-2xl bg-background border border-black-200 px-4 text-lg font-rubik text-black-300"
+                            />
+                        </View>
+
+                        {/* Departure Time */}
+                        <View className="mb-6">
+                            <Text className="text-2xl font-rubikMedium text-black-300 mb-2">
+                                Leaving in
+                            </Text>
+
+                            {/* Time Preview */}
+                            <View className="mb-3">
+                                <Text className="text-base font-rubik text-primary-300">
+                                    <Text className="text-base font-rubikMedium text-primary-300">
+                                        {minutesInput.trim() ? getDisplayTime() : `Current time: ${formatTime(new Date())}`}
+                                    </Text>
+                                </Text>
+                            </View>
+
+                            <View className="flex-row items-center">
+                                <TextInput
+                                    value={minutesInput}
+                                    onChangeText={(text) => {
+                                        const numericText = text.replace(/[^0-9]/g, '');
+                                        const numericValue = parseInt(numericText);
+
+                                        if (numericText === '') {
+                                            setMinutesInput('');
+                                        } else if (numericValue > maxTime) {
+                                            setMinutesInput(maxTime.toString());
+                                        } else {
+                                            setMinutesInput(numericText);
+                                        }
+                                    }}
+                                    placeholder="Enter minutes from now"
+                                    placeholderTextColor="#666876"
+                                    keyboardType="number-pad"
+                                    className="h-14 rounded-2xl bg-background border border-black-200 px-4 text-lg font-rubik text-black-300 flex-1 mr-3"
+                                />
+                            </View>
+
+                            <View className="mt-3 flex-row space-x-2">
+                                <Pressable
+                                    onPress={() => setMinutesInput("0")}
+                                    className="mr-1 px-4 py-2 rounded-full bg-background border border-black-200"
+                                >
+                                    <Text className="text-sm font-rubik text-black-300">Now</Text>
+                                </Pressable>
+                                <Pressable
+                                    onPress={() => setMinutesInput("5")}
+                                    className="mr-1 px-4 py-2 rounded-full bg-background border border-black-200"
+                                >
+                                    <Text className="text-sm font-rubik text-black-300">5 min</Text>
+                                </Pressable>
+                                <Pressable
+                                    onPress={() => setMinutesInput("15")}
+                                    className="mr-1 px-4 py-2 rounded-full bg-background border border-black-200"
+                                >
+                                    <Text className="text-sm font-rubik text-black-300">15 min</Text>
+                                </Pressable>
+                                <Pressable
+                                    onPress={() => setMinutesInput("30")}
+                                    className="mr-1 px-4 py-2 rounded-full bg-background border border-black-200"
+                                >
+                                    <Text className="text-sm font-rubik text-black-300">30 min</Text>
+                                </Pressable>
+                                <Pressable
+                                    onPress={() => setMinutesInput("60")}
+                                    className="mr-1 px-4 py-2 rounded-full bg-background border border-black-200"
+                                >
+                                    <Text className="text-sm font-rubik text-black-300">1 hour</Text>
+                                </Pressable>
+                            </View>
+                        </View>
+
+                        {/* Vibe Selection */}
+                        <View className="mb-10">
+                            <Text className="text-2xl font-rubikMedium text-black-300 mb-4">
+                                Walk settings
+                            </Text>
+                            <View className="flex-row justify-between px-1">
+                                <Pressable
+                                    onPress={() => setVibe("chill")}
+                                    className={`h-14 flex-1 rounded-2xl items-center justify-center mr-2 border ${vibe === "chill"
+                                        ? "bg-primary-300 border-primary-300"
+                                        : "bg-background border-black-200"
+                                        }`}
+                                >
+                                    <Text
+                                        className={`text-lg font-rubikMedium ${vibe === "chill"
+                                            ? "text-white"
+                                            : "text-black-300"
+                                            }`}
+                                    >
+                                        Private
+                                    </Text>
+                                </Pressable>
+
+                                <Pressable
+                                    onPress={() => setVibe("energetic")}
+                                    className={`h-14 flex-1 rounded-2xl items-center justify-center ml-2 border ${vibe === "energetic"
+                                        ? "bg-primary-300 border-primary-300"
+                                        : "bg-background border-black-200"
+                                        }`}
+                                >
+                                    <Text
+                                        className={`text-lg font-rubikMedium ${vibe === "energetic"
+                                            ? "text-white"
+                                            : "text-black-300"
+                                            }`}
+                                    >
+                                        Public
+                                    </Text>
+                                </Pressable>
+                            </View>
+                        </View>
+
+                        {/* Create Button */}
+                        <View className="mt-8 mb-8">
+                            <Pressable
+                                disabled={!canPost}
+                                onPress={handleCreateWalk}
+                                className={`h-14 items-center justify-center rounded-2xl ${canPost
+                                    ? "bg-primary-300"
+                                    : "bg-black-100"
+                                    }`}
                             >
-                                <Text className="text-sm font-rubik text-black-300">Now</Text>
+                                <Text className={`text-lg font-rubikMedium ${canPost ? "text-white" : "text-black-300"
+                                    }`}>
+                                    Create Walk
+                                </Text>
                             </Pressable>
-                        <Pressable
-                            onPress={() => setMinutesInput("5")}
-                            className="mr-1 px-4 py-2 rounded-full bg-background border border-black-200"
-                        >
-                            <Text className="text-sm font-rubik text-black-300">5 min</Text>
-                        </Pressable>
-                        <Pressable
-                            onPress={() => setMinutesInput("15")}
-                            className="mr-1 px-4 py-2 rounded-full bg-background border border-black-200"
-                        >
-                            <Text className="text-sm font-rubik text-black-300">15 min</Text>
-                        </Pressable>
-                        <Pressable
-                            onPress={() => setMinutesInput("30")}
-                            className="mr-1 px-4 py-2 rounded-full bg-background border border-black-200"
-                        >
-                            <Text className="text-sm font-rubik text-black-300">30 min</Text>
-                        </Pressable>
-                        <Pressable
-                            onPress={() => setMinutesInput("60")}
-                            className="mr-1 px-4 py-2 rounded-full bg-background border border-black-200"
-                        >
-                            <Text className="text-sm font-rubik text-black-300">1 hour</Text>
-                        </Pressable>
+                        </View>
                     </View>
                 </View>
-
-                {/* Vibe Selection */}
-                <View className="mb-10">
-                    <Text className="text-2xl font-rubikMedium text-black-300 mb-4">
-                        Walk settings
-                    </Text>
-                    <View className="flex-row justify-between px-1">
-                        <Pressable
-                            onPress={() => setVibe("chill")}
-                            className={`h-14 flex-1 rounded-2xl items-center justify-center mr-2 border ${vibe === "chill"
-                                ? "bg-primary-300 border-primary-300"
-                                : "bg-background border-black-200"
-                                }`}
-                        >
-                            <Text
-                                className={`text-lg font-rubikMedium ${vibe === "chill"
-                                    ? "text-white"
-                                    : "text-black-300"
-                                    }`}
-                            >
-                                Private
-                            </Text>
-                        </Pressable>
-
-                        <Pressable
-                            onPress={() => setVibe("energetic")}
-                            className={`h-14 flex-1 rounded-2xl items-center justify-center ml-2 border ${vibe === "energetic"
-                                ? "bg-primary-300 border-primary-300"
-                                : "bg-background border-black-200"
-                                }`}
-                        >
-                            <Text
-                                className={`text-lg font-rubikMedium ${vibe === "energetic"
-                                    ? "text-white"
-                                    : "text-black-300"
-                                    }`}
-                            >
-                                Public
-                            </Text>
-                        </Pressable>
-                    </View>
-                </View>
-
-                {/* Create Button */}
-                <View className="mt-8 mb-8">
-                    <Pressable
-                        disabled={!canPost}
-                        onPress={handleCreateWalk}
-                        className={`h-14 items-center justify-center rounded-2xl ${canPost
-                            ? "bg-primary-300"
-                            : "bg-black-100"
-                            }`}
-                    >
-                        <Text className={`text-lg font-rubikMedium ${canPost ? "text-white" : "text-black-300"
-                            }`}>
-                            Create Walk
-                        </Text>
-                    </Pressable>
-                </View>
-            </View>
-        </View>
+            </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
     );
 }

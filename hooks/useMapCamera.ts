@@ -31,7 +31,7 @@ export const useMapCamera = (initialCenter: [number, number]) => {
                 sw: [minLng, minLat],
                 paddingTop: 80,
                 paddingRight: 60,
-                paddingBottom: 200,
+                paddingBottom: 0,
                 paddingLeft: 60,
             },
             pitch: 30,
