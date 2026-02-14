@@ -14,6 +14,7 @@ import { useMapCamera } from "@/hooks/useMapCamera";
 import { useRouting } from "@/hooks/useRouting";
 import { useWalks } from "@/hooks/useWalks";
 import { WalkModal } from '@/components/WalkModal';
+import { useReverseGeocode } from "@/hooks/useReverseGeocode";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
@@ -41,6 +42,13 @@ const Map = () => {
     const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
     const [startMarker, setStartMarker] = useState<{ lng: number; lat: number } | null>(null);
     const [endMarker, setEndMarker] = useState<{ lng: number; lat: number } | null>(null);
+
+    const userRouteStart = startMarker ?? (userLocation ? { lng: userLocation[0], lat: userLocation[1] } : null);
+    const userRouteEnd = endMarker;
+    const { startLocation: userStartLoc, endLocation: userEndLoc } = useReverseGeocode(
+        userRouteStart,
+        userRouteEnd
+    );
 
     const didMountRef = useRef(false);
 
@@ -297,10 +305,11 @@ const Map = () => {
                 onClose={() => setModalVisible(false)}
                 selectedWalk={selectedWalk}
                 userRoute={route && !selectedWalkId ? {
-                    start: startMarker ? 'Custom start' : 'Your location',
-                    end: 'Selected destination',
+                    start: userStartLoc || 'Your location',
+                    end: userEndLoc || 'Selected destination',
                 } : null}
             />
+
 
             {route && !selectedWalkId && (
                 <View style={styles.button}>

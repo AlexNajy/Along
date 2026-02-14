@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Text, View, Pressable, TextInput, Alert } from "react-native";
 import { supabase } from "@/libs/supabase";
 import {router, useLocalSearchParams } from "expo-router";
+import { useReverseGeocode } from "@/hooks/useReverseGeocode";
 
 export default function CreateWalks() {
-    const [startLocation, setStartLocation] = useState("");
-    const [endLocation, setEndLocation] = useState("");
     const [minutesInput, setMinutesInput] = useState("");
     const [vibe, setVibe] = useState("chill");
     const maxTime = 1440;
@@ -16,6 +15,10 @@ export default function CreateWalks() {
     const endMarker = params.end ? JSON.parse(Array.isArray(params.end) ? params.end[0] : params.end) : null;
     const userLocation = params.user ? JSON.parse(Array.isArray(params.user) ? params.user[0] : params.user) : null;
     const route = params.route ? JSON.parse(Array.isArray(params.route) ? params.route[0] : params.route) : null;
+
+    const startCoords = startMarker ?? userLocation ?? null;
+    const endCoords = endMarker ?? null;
+    const { startLocation, endLocation, isLoading } = useReverseGeocode(startCoords, endCoords);
 
     const canPost =
         startLocation.trim() !== "" &&
@@ -68,34 +71,6 @@ export default function CreateWalks() {
         if (error) throw error;
         return (data?.place_name as string | null) ?? null;
       };
-      
-
-    useEffect(() => {
-        const run = async () => {
-          const startCoords = startMarker ?? userLocation ?? null;
-          const endCoords = endMarker ?? null;
-      
-          if (!startCoords?.lat || !startCoords?.lng) return;
-          if (!endCoords?.lat || !endCoords?.lng) return;
-      
-          try {
-            const [startName, endName] = await Promise.all([
-              reverseGeocode(startCoords.lat, startCoords.lng),
-              reverseGeocode(endCoords.lat, endCoords.lng),
-            ]);
-      
-            setStartLocation(startName ?? `${startCoords.lat.toFixed(5)}, ${startCoords.lng.toFixed(5)}`);
-            setEndLocation(endName ?? `${endCoords.lat.toFixed(5)}, ${endCoords.lng.toFixed(5)}`);
-          } catch {
-            setStartLocation(`${startCoords.lat.toFixed(5)}, ${startCoords.lng.toFixed(5)}`);
-            setEndLocation(`${endCoords.lat.toFixed(5)}, ${endCoords.lng.toFixed(5)}`);
-          }
-        };
-      
-        run();
-      }, [startMarker, endMarker, userLocation]);
-
- 
 
     const handleCreateWalk = async () => {
         const {
@@ -154,10 +129,6 @@ export default function CreateWalks() {
             Alert.alert("Error", error.message);
         } else {
             Alert.alert("Success", "Walk created!");
-            setStartLocation("");
-            setEndLocation("");
-            setMinutesInput("");
-            setVibe("chill");
             router.replace("../(tabs)/activity");
         }
     };
@@ -182,8 +153,8 @@ export default function CreateWalks() {
                         Starting Location
                     </Text>
                     <TextInput
-                        value={startLocation}
-                        onChangeText={setStartLocation}
+                        value={isLoading ? "Loading..." : startLocation}
+                        editable={false}
                         placeholder="Enter starting location"
                         placeholderTextColor={"#666876"}
                         className="h-14 rounded-2xl bg-background border border-black-200 px-4 text-lg font-rubik text-black-300"
@@ -196,8 +167,8 @@ export default function CreateWalks() {
                         Final Location
                     </Text>
                     <TextInput
-                        value={endLocation}
-                        onChangeText={setEndLocation}
+                        value={isLoading ? "Loading..." : endLocation}
+                        editable={false}
                         placeholder="Enter destination location"
                         placeholderTextColor={"#666876"}
                         className="h-14 rounded-2xl bg-background border border-black-200 px-4 text-lg font-rubik text-black-300"
