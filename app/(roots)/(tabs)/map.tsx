@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { router } from "expo-router";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Modal } from "react-native";
 import Mapbox from '@rnmapbox/maps';
 import { distanceMeters, isPointInPolygon } from '@/libs/geometry';
 import Button from "@/components/Button";
@@ -13,6 +13,7 @@ import { useRouteAnimation } from "@/hooks/useRouteAnimation";
 import { useMapCamera } from "@/hooks/useMapCamera";
 import { useRouting } from "@/hooks/useRouting";
 import { useWalks } from "@/hooks/useWalks";
+import { WalkModal } from '@/components/WalkModal';
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
@@ -21,16 +22,17 @@ const USER_REROUTE_METERS = 10;
 const Map = () => {
     const { colors, isDark } = useTheme();
     const [campus] = useState<CampusConfig>(CAMPUSES.ubc);
-    
+    const [modalVisible, setModalVisible] = useState(false);
+
     const { cameraState, cameraRef, fitToBounds, updateCameraCenter } = useMapCamera(campus.center);
     const { walks, selectedWalkId, setSelectedWalkId, selectedWalk } = useWalks();
     const { animatedRoute: animatedWalkRoute, animateRoute, clearAnimation } = useRouteAnimation();
-    const { 
-        route, 
-        isLoadingRoute, 
-        lastRoutedLocation, 
-        fetchRoute, 
-        clearRoute 
+    const {
+        route,
+        isLoadingRoute,
+        lastRoutedLocation,
+        fetchRoute,
+        clearRoute
     } = useRouting(
         `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/${process.env.EXPO_PUBLIC_ROUTING_FUNCTION}`,
         process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
@@ -39,7 +41,7 @@ const Map = () => {
     const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
     const [startMarker, setStartMarker] = useState<{ lng: number; lat: number } | null>(null);
     const [endMarker, setEndMarker] = useState<{ lng: number; lat: number } | null>(null);
-    
+
     const didMountRef = useRef(false);
 
     useEffect(() => {
@@ -58,6 +60,18 @@ const Map = () => {
     }, [selectedWalk]);
 
     useEffect(() => {
+        if (route && !selectedWalkId && !isLoadingRoute) {
+            setModalVisible(true);
+        }
+    }, [route, selectedWalkId, isLoadingRoute]);
+
+    useEffect(() => {
+        if (!route && !selectedWalkId) {
+            setModalVisible(false);
+        }
+    }, [route, selectedWalkId]);
+
+    useEffect(() => {
         if (didMountRef.current) {
             if (!endMarker || (!startMarker && !userLocation)) {
                 clearRoute();
@@ -66,7 +80,7 @@ const Map = () => {
 
             const start = startMarker ? [startMarker.lng, startMarker.lat] : userLocation!;
             const end = [endMarker.lng, endMarker.lat];
-            
+
             fetchRoute(start as [number, number], end as [number, number], fitToBounds);
         } else {
             didMountRef.current = true;
@@ -75,11 +89,11 @@ const Map = () => {
 
     useEffect(() => {
         if (!userLocation || !endMarker || startMarker) return;
-        
+
         const distance = lastRoutedLocation.current
             ? distanceMeters(lastRoutedLocation.current, userLocation)
             : Infinity;
-        
+
         if (distance >= USER_REROUTE_METERS) {
             const end = [endMarker.lng, endMarker.lat];
             fetchRoute(userLocation, end as [number, number], fitToBounds);
@@ -128,12 +142,14 @@ const Map = () => {
     const handleWalkPress = (walkId: string) => {
         if (selectedWalkId === walkId) {
             setSelectedWalkId(null);
+            setModalVisible(false);
         } else {
             const selectedWalk = walks.find(w => w.id === walkId);
             setEndMarker(null);
             setStartMarker(null);
             clearRoute();
             setSelectedWalkId(walkId);
+            setModalVisible(true);
             if (selectedWalk?.route) {
                 animateRoute(selectedWalk.route);
             }
@@ -251,7 +267,7 @@ const Map = () => {
                         onSelected={() => handleMarkerPress('start')}
                     >
                         <View>
-                            <Ionicons name="location" color={colors.secondary[500]} size={48} />
+                            <Ionicons name="location" color={colors.primary[500]} size={48} />
                         </View>
                     </Mapbox.PointAnnotation>
                 )}
@@ -264,7 +280,7 @@ const Map = () => {
                         onSelected={() => handleMarkerPress('end')}
                     >
                         <View>
-                            <Ionicons name="location" color={colors.primary[500]} size={48} />
+                            <Ionicons name="location" color={colors.secondary[500]} size={48} />
                         </View>
                     </Mapbox.PointAnnotation>
                 )}
@@ -275,6 +291,16 @@ const Map = () => {
                     selectedWalkId={selectedWalkId}
                 />
             </Mapbox.MapView>
+
+            <WalkModal
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                selectedWalk={selectedWalk}
+                userRoute={route && !selectedWalkId ? {
+                    start: startMarker ? 'Custom start' : 'Your location',
+                    end: 'Selected destination',
+                } : null}
+            />
 
             {route && !selectedWalkId && (
                 <View style={styles.button}>
