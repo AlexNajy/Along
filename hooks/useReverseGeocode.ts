@@ -12,16 +12,31 @@ export const useReverseGeocode = (startCoords: Coordinates, endCoords: Coordinat
   const [isLoading, setIsLoading] = useState(false);
 
   const reverseGeocode = async (lat: number, lng: number): Promise<string | null> => {
-    const { data, error } = await supabase.functions.invoke("reverse_geocode", {
-      body: { lng, lat },
-    });
+    try {
+      const { data: buildingName, error } = await supabase
+        .rpc('get_building_from_coords', { lat, lon: lng });
 
-    if (error) {
-      console.error("Reverse geocode error:", error);
-      return null;
+      if (!error && buildingName) {
+        return buildingName;
+      }
+    } catch (err) {
+      console.log("Building lookup failed:", err);
     }
-    
-    return (data?.place_name as string | null) ?? null;
+
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "reverse_geocode",
+        { body: { lng, lat } }
+      );
+
+      if (!error && data?.place_name) {
+        return data.place_name;
+      }
+    } catch (err) {
+      console.error("Mapbox failed:", err);
+    }
+
+    return null;
   };
 
   useEffect(() => {
@@ -38,12 +53,8 @@ export const useReverseGeocode = (startCoords: Coordinates, endCoords: Coordinat
           reverseGeocode(endCoords.lat, endCoords.lng),
         ]);
 
-        setStartLocation(
-          startName ?? `${startCoords.lat.toFixed(5)}, ${startCoords.lng.toFixed(5)}`
-        );
-        setEndLocation(
-          endName ?? `${endCoords.lat.toFixed(5)}, ${endCoords.lng.toFixed(5)}`
-        );
+        setStartLocation(startName ?? `${startCoords.lat.toFixed(5)}, ${startCoords.lng.toFixed(5)}`);
+        setEndLocation(endName ?? `${endCoords.lat.toFixed(5)}, ${endCoords.lng.toFixed(5)}`);
       } catch {
         setStartLocation(`${startCoords.lat.toFixed(5)}, ${startCoords.lng.toFixed(5)}`);
         setEndLocation(`${endCoords.lat.toFixed(5)}, ${endCoords.lng.toFixed(5)}`);
