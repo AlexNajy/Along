@@ -30,7 +30,7 @@ export const useReverseGeocode = (startCoords: Coordinates, endCoords: Coordinat
       );
 
       if (!error && data?.place_name) {
-        return data.place_name;
+        return data.place_name.replace(/[,-].*/, "").trim();
       }
     } catch (err) {
       console.error("Mapbox failed:", err);
