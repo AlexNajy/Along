@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
 import { supabase } from '@/libs/supabase';
 import Button from '@/components/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '@/context/AuthContext';
 
 interface UserStats {
     total_walks: number;
@@ -17,7 +17,7 @@ interface UserStats {
 export default function ProfileScreen() {
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
-    const [user, setUser] = useState<any>(null);
+    const { user, loading: authLoading, signOut } = useAuth();
     const [loading, setLoading] = useState(true);
     const [signingOut, setSigningOut] = useState(false);
     const [stats, setStats] = useState<UserStats>({
@@ -28,28 +28,16 @@ export default function ProfileScreen() {
     });
 
     useEffect(() => {
-        fetchUser();
-        fetchUserStats();
-    }, []);
-
-    const fetchUser = async () => {
-        try {
-            const { data: { user }, error } = await supabase.auth.getUser();
-            if (error) throw error;
-            setUser(user);
-        } catch (error) {
-            console.error('Error fetching user:', error);
-            Alert.alert('Error', 'Could not load profile');
-        } finally {
-            setLoading(false);
+        if (user) {
+            fetchUserStats();
         }
-    };
+        setLoading(false);
+    }, [user]);
 
     const fetchUserStats = async () => {
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+        if (!user) return;
 
+        try {
             const { data, error } = await supabase
                 .from('profiles')
                 .select('total_walks, ratings, connections, verified')
@@ -70,7 +58,7 @@ export default function ProfileScreen() {
                 });
             }
         } catch (error) {
-            console.error('Error fetching profile:', error);
+            console.error('Error fetching stats:', error);
         }
     };
 
@@ -85,15 +73,8 @@ export default function ProfileScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         setSigningOut(true);
-                        try {
-                            const { error } = await supabase.auth.signOut();
-                            if (error) throw error;
-                        } catch (error) {
-                            console.error('Error signing out:', error);
-                            Alert.alert('Error', 'Could not sign out. Please try again.');
-                        } finally {
-                            setSigningOut(false);
-                        }
+                        await signOut(); 
+                        setSigningOut(false);
                     },
                 },
             ]
@@ -120,7 +101,7 @@ export default function ProfileScreen() {
         Alert.alert('Help & Support', 'This feature is coming soon!');
     };
 
-    if (loading) {
+    if (authLoading || loading) {
         return (
             <View 
                 style={{ 
@@ -131,10 +112,13 @@ export default function ProfileScreen() {
                     alignItems: 'center'
                 }}
             >
-                <Text style={{ fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>Loading...</Text>
+                <Text style={{ fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>
+                    Loading...
+                </Text>
             </View>
         );
     }
+
 
     const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
     const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;

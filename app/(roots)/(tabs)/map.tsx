@@ -1,247 +1,267 @@
 import React, { useState, useEffect, useRef } from "react";
 import { router } from "expo-router";
-import { Text, View, Pressable, StyleSheet } from "react-native";
+import { View, StyleSheet, Modal } from "react-native";
 import Mapbox from '@rnmapbox/maps';
-//import mbxDirections from '@mapbox/mapbox-sdk/services/directions';
-import { distanceMeters, isPointInPolygon } from '@/libs/geometry';
+import { distanceMeters, isPointInPolygon, calculateDistance } from '@/libs/geometry';
 import Button from "@/components/Button";
+import WalkPins from "@/components/WalkPins";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { UBC_BOUNDARY, UBC_CENTER_COORDINATE, UBC_MAX_BOUNDS } from "@/constants/boundaries";
+import { CAMPUSES, CampusConfig } from "@/constants/campuses";
+import { useRouteAnimation } from "@/hooks/useRouteAnimation";
+import { useMapCamera } from "@/hooks/useMapCamera";
+import { useRouting } from "@/hooks/useRouting";
+import { useWalks } from "@/hooks/useWalks";
+import { WalkModal } from '@/components/WalkModal';
+import { useReverseGeocode } from "@/hooks/useReverseGeocode";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
 const USER_REROUTE_METERS = 10;
 
-// const directionsClient = mbxDirections({
-//     accessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!
-// });
-
 const Map = () => {
     const { colors, isDark } = useTheme();
+    const [campus] = useState<CampusConfig>(CAMPUSES.ubc);
+    const [modalVisible, setModalVisible] = useState(false);
+
+    const { cameraState, cameraRef, fitToBounds, updateCameraCenter } = useMapCamera(campus.center);
+    const { walks, selectedWalkId, setSelectedWalkId, selectedWalk } = useWalks();
+    const { animatedRoute: animatedWalkRoute, animateRoute, clearAnimation } = useRouteAnimation();
+    const {
+        route,
+        isLoadingRoute,
+        lastRoutedLocation,
+        fetchRoute,
+        clearRoute
+    } = useRouting(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/${process.env.EXPO_PUBLIC_ROUTING_FUNCTION}`,
+        process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
     const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-    const [startMarker, setStartMarker] = useState<{ lng: number, lat: number } | null>(null);
-    const [endMarker, setEndMarker] = useState<{ lng: number, lat: number } | null>(null);
-    const [route, setRoute] = useState<any>(null);
-    const [isLoadingRoute, setIsLoadingRoute] = useState(false);
-    const lastRoutedLocation = useRef<[number, number] | null>(null);
-    const abortControllerRef = useRef<AbortController | null>(null);
+    const [startMarker, setStartMarker] = useState<{ lng: number; lat: number } | null>(null);
+    const [endMarker, setEndMarker] = useState<{ lng: number; lat: number } | null>(null);
+
+    const userRouteStart = startMarker ?? (userLocation ? { lng: userLocation[0], lat: userLocation[1] } : null);
+    const userRouteEnd = endMarker;
+    const { startLocation: userStartLoc, endLocation: userEndLoc } = useReverseGeocode(
+        userRouteStart,
+        userRouteEnd
+    );
+
     const didMountRef = useRef(false);
 
-    // const fetchRoute = async () => {
-    //     if (!endMarker || (!startMarker && !userLocation)) {
-    //         setRoute(null);
-    //         return;
-    //     }
-
-    //     try {
-    //         const response = await directionsClient.getDirections({
-    //             profile: 'walking',
-    //             waypoints: startMarker
-    //                 ? [
-    //                     { coordinates: [startMarker.lng, startMarker.lat] },
-    //                     { coordinates: [endMarker.lng, endMarker.lat] }
-    //                 ]
-    //                 : [
-    //                     { coordinates: userLocation! },
-    //                     { coordinates: [endMarker.lng, endMarker.lat] }
-    //                 ],
-    //             geometries: 'geojson'
-    //         }).send();
-
-    //         const routeGeoJSON = response.body.routes[0].geometry;
-    //         setRoute(routeGeoJSON);
-    //         console.log("Fetched Route");
-    //     } catch (error) {
-    //         console.error('Error fetching route:', error);
-    //     }
-    // };
-
-    const fetchRoute = async () => {
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-        }
-
-        if (!endMarker || (!startMarker && !userLocation)) {
-            setRoute(null);
-            return;
-        }
-
-        const start = startMarker
-            ? [startMarker.lng, startMarker.lat]
-            : userLocation!;
-        const end = [endMarker.lng, endMarker.lat];
-
-        const abortController = new AbortController();
-        abortControllerRef.current = abortController;
-
-        setIsLoadingRoute(true);
-        setRoute({
-            type: "Feature",
-            geometry: {
-                type: "LineString",
-                coordinates: [start, end]
+    useEffect(() => {
+        if (userLocation && !selectedWalkId && !route) {
+            const [lng, lat] = userLocation;
+            if (isPointInPolygon(lng, lat, campus.boundary)) {
+                updateCameraCenter(userLocation);
             }
-        });
-
-        try {
-            const res = await fetch(
-                `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/${process.env.EXPO_PUBLIC_ROUTING_FUNCTION}`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
-                    },
-                    body: JSON.stringify({ start, end }),
-                    signal: abortController.signal
-                }
-            );
-
-            if (!res.ok) {
-                console.error('Route fetch error:', await res.text());
-                setIsLoadingRoute(false);
-                return;
-            }
-
-            const geojson = await res.json();
-            setRoute(geojson);
-            setIsLoadingRoute(false);
-        } catch (err) {
-            if (err instanceof Error && err.name === 'AbortError') {
-                console.log('Route fetch cancelled');
-                return;
-            }
-            console.error('Route fetch failed:', err);
-            setIsLoadingRoute(false);
         }
-    };
+    }, [userLocation, selectedWalkId, route, campus.boundary]);
+
+    useEffect(() => {
+        if (selectedWalk?.route) {
+            fitToBounds(selectedWalk.route);
+        }
+    }, [selectedWalk]);
+
+    useEffect(() => {
+        if (route && !selectedWalkId && !isLoadingRoute) {
+            setModalVisible(true);
+        }
+    }, [route, selectedWalkId, isLoadingRoute]);
+
+    useEffect(() => {
+        if (!route && !selectedWalkId) {
+            setModalVisible(false);
+        }
+    }, [route, selectedWalkId]);
 
     useEffect(() => {
         if (didMountRef.current) {
-            fetchRoute();
-            console.log("Marker Effect Triggered: Fetching Route");
+            if (!endMarker || (!startMarker && !userLocation)) {
+                clearRoute();
+                return;
+            }
+
+            const start = startMarker ? [startMarker.lng, startMarker.lat] : userLocation!;
+            const end = [endMarker.lng, endMarker.lat];
+
+            fetchRoute(start as [number, number], end as [number, number], fitToBounds);
         } else {
             didMountRef.current = true;
         }
     }, [startMarker, endMarker]);
 
-    // useEffect(() => {
-    //     if (!userLocation || !endMarker || startMarker) return;
+    useEffect(() => {
+        if (!userLocation || !endMarker || startMarker) return;
 
-    //     const distance = lastRoutedLocation.current
-    //         ? distanceMeters(lastRoutedLocation.current, userLocation)
-    //         : Infinity;
+        const distance = lastRoutedLocation.current
+            ? distanceMeters(lastRoutedLocation.current, userLocation)
+            : Infinity;
 
-    //     if (distance >= USER_REROUTE_METERS) {
-    //         fetchRoute();
-    //         lastRoutedLocation.current = userLocation;
-    //     }
-    // }, [userLocation]);
+        if (distance >= USER_REROUTE_METERS) {
+            const end = [endMarker.lng, endMarker.lat];
+            fetchRoute(userLocation, end as [number, number], fitToBounds);
+            lastRoutedLocation.current = userLocation;
+        }
+    }, [userLocation]);
+
+    useEffect(() => {
+        if (!selectedWalkId) clearAnimation();
+    }, [selectedWalkId]);
+
+    const validatePoint = (lng: number, lat: number) => {
+        if (!isPointInPolygon(lng, lat, campus.boundary)) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            return false;
+        }
+        return true;
+    };
 
     const handleMapPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
-    
-        if (!isPointInPolygon(lng, lat, UBC_BOUNDARY)) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            return;
-        }
-    
+        if (!validatePoint(lng, lat)) return;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setEndMarker({ lng, lat });
+        setSelectedWalkId(null);
     };
 
     const handleMapLongPress = (point: any) => {
         const [lng, lat] = point.geometry.coordinates;
-
-        if (!isPointInPolygon(lng, lat, UBC_BOUNDARY)) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            return;
-        }
-
+        if (!validatePoint(lng, lat)) return;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setStartMarker({ lng, lat });
     };
 
     const handleMarkerPress = (type: 'start' | 'end') => {
         if (type === 'start') {
-            setStartMarker(null)
+            setStartMarker(null);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         } else {
-            setEndMarker(startMarker)
-            setStartMarker(null)
+            setEndMarker(startMarker);
+            setStartMarker(null);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
         }
     };
 
+    const handleWalkPress = (walkId: string) => {
+        if (selectedWalkId === walkId) {
+            setSelectedWalkId(null);
+            setModalVisible(false);
+        } else {
+            const selectedWalk = walks.find(w => w.id === walkId);
+            setEndMarker(null);
+            setStartMarker(null);
+            clearRoute();
+            setSelectedWalkId(walkId);
+            setModalVisible(true);
+            if (selectedWalk?.route) {
+                animateRoute(selectedWalk.route);
+            }
+        }
+    };
+
+    const styleURL = isDark
+        ? 'mapbox://styles/alongapp/cmldiepmw007101sz252obyok/draft'
+        : 'mapbox://styles/alongapp/cmlcnlosl006101szfwf099ap/draft';
+
     return (
         <View style={styles.container}>
             <Mapbox.MapView
+                key={styleURL}
                 style={styles.map}
                 attributionPosition={{ top: -24, left: 10 }}
-                styleURL={isDark ? Mapbox.StyleURL.Street : Mapbox.StyleURL.Street}
+                styleURL={styleURL}
                 scaleBarEnabled={false}
                 onPress={handleMapPress}
                 onLongPress={handleMapLongPress}
                 pitchEnabled={false}
+                gestureSettings={{ doubleTapToZoomInEnabled: false }}
             >
                 <Mapbox.Camera
+                    ref={cameraRef}
                     minZoomLevel={12}
                     maxZoomLevel={18}
-                    zoomLevel={15}
+                    zoomLevel={cameraState.zoom}
+                    pitch={cameraState.pitch}
                     animationMode="flyTo"
                     animationDuration={2000}
-                    maxBounds={UBC_MAX_BOUNDS}
-                    centerCoordinate={UBC_CENTER_COORDINATE}
-                    pitch={30}
+                    maxBounds={campus.maxBounds}
+                    centerCoordinate={cameraState.center}
                 />
 
                 <Mapbox.UserLocation
                     visible={true}
                     showsUserHeadingIndicator={true}
                     onUpdate={(location) => {
-                        setUserLocation([location.coords.longitude, location.coords.latitude]);
+                        const lng = location.coords.longitude;
+                        const lat = location.coords.latitude;
+                        if (typeof lng === 'number' && typeof lat === 'number' && !isNaN(lng) && !isNaN(lat)) {
+                            setUserLocation([lng, lat]);
+                        }
                     }}
                 />
 
-                <Mapbox.ShapeSource id="ubc-boundary" shape={UBC_BOUNDARY}>
+                <Mapbox.ShapeSource id="campus-boundary" shape={campus.boundary}>
                     <Mapbox.LineLayer
-                        id="ubc-boundary-line"
+                        id="campus-boundary-line"
                         style={{
-                            lineColor: colors.ubc.secondary,
+                            lineColor: campus.themeColor,
                             lineWidth: 3,
                             lineDasharray: [4, 2],
+                            lineOpacity: 0.8,
                         }}
                     />
                 </Mapbox.ShapeSource>
 
-                <Mapbox.VectorSource id="mapbox-buildings" url="mapbox://mapbox.mapbox-streets-v8">
-                    <Mapbox.FillExtrusionLayer
-                        id="3d-buildings"
-                        sourceLayerID="building"
-                        minZoomLevel={12}
-                        maxZoomLevel={22}
-                        style={{
-                            fillExtrusionHeight: ['get', 'height'],
-                            fillExtrusionBase: ['get', 'min_height'],
-                            fillExtrusionColor: isDark ? '#555' : '#aaa',
-                            fillExtrusionOpacity: 0.6,
-                        }}
-                    />
-                </Mapbox.VectorSource>
-
-                {route && (
+                {route && !selectedWalkId && (
                     <Mapbox.ShapeSource id="route" shape={route}>
+                        <Mapbox.LineLayer
+                            id="route-line-halo"
+                            style={{
+                                lineColor: 'white',
+                                lineWidth: 8,
+                                lineOpacity: isLoadingRoute ? 0.15 : 0.3,
+                                lineCap: 'round',
+                                lineJoin: 'round',
+                            }}
+                        />
                         <Mapbox.LineLayer
                             id="route-line"
                             style={{
-                                lineColor: colors.secondary[300],
+                                lineColor: '#4dacff',
                                 lineWidth: 4,
                                 lineCap: 'round',
                                 lineJoin: 'round',
                                 lineDasharray: isLoadingRoute ? [2, 2] : [],
                                 lineOpacity: isLoadingRoute ? 0.5 : 1,
+                            }}
+                        />
+                    </Mapbox.ShapeSource>
+                )}
+
+                {animatedWalkRoute && selectedWalkId && (
+                    <Mapbox.ShapeSource id="selected-walk-route" shape={animatedWalkRoute}>
+                        <Mapbox.LineLayer
+                            id="selected-walk-route-halo"
+                            style={{
+                                lineColor: 'white',
+                                lineWidth: 8,
+                                lineOpacity: 0.3,
+                                lineCap: 'round',
+                                lineJoin: 'round',
+                            }}
+                        />
+                        <Mapbox.LineLayer
+                            id="selected-walk-route-line"
+                            style={{
+                                lineColor: '#4dacff',
+                                lineWidth: 5,
+                                lineCap: 'round',
+                                lineJoin: 'round',
                             }}
                         />
                     </Mapbox.ShapeSource>
@@ -254,11 +274,12 @@ const Map = () => {
                         anchor={{ x: 0.5, y: 1 }}
                         onSelected={() => handleMarkerPress('start')}
                     >
-                        <View style={styles.marker}>
-                            <Ionicons name="location" color={colors.secondary[500]} size={48} />
+                        <View>
+                            <Ionicons name="location" color={colors.primary[500]} size={48} />
                         </View>
                     </Mapbox.PointAnnotation>
                 )}
+
                 {endMarker && (
                     <Mapbox.PointAnnotation
                         id="end-marker"
@@ -266,14 +287,32 @@ const Map = () => {
                         anchor={{ x: 0.5, y: 1 }}
                         onSelected={() => handleMarkerPress('end')}
                     >
-                        <View style={styles.marker}>
-                            <Ionicons name="location" color={colors.primary[500]} size={48} />
+                        <View>
+                            <Ionicons name="location" color={colors.secondary[500]} size={48} />
                         </View>
                     </Mapbox.PointAnnotation>
                 )}
+
+                <WalkPins
+                    walks={walks}
+                    onWalkPress={handleWalkPress}
+                    selectedWalkId={selectedWalkId}
+                />
             </Mapbox.MapView>
 
-            {route && (
+            <WalkModal
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                selectedWalk={selectedWalk}
+                userRoute={route && !selectedWalkId ? {
+                    start: userStartLoc || 'Your location',
+                    end: userEndLoc || 'Selected destination',
+                    distance: calculateDistance(route),
+                } : null}
+            />
+
+
+            {route && !selectedWalkId && (
                 <View style={styles.button}>
                     <Button
                         title={isLoadingRoute ? "Fetching..." : "Go Walk"}
@@ -283,6 +322,8 @@ const Map = () => {
                                 start: startMarker ? JSON.stringify(startMarker) : undefined,
                                 end: endMarker ? JSON.stringify(endMarker) : undefined,
                                 user: userLocation ? JSON.stringify({ lng: userLocation[0], lat: userLocation[1] }) : undefined,
+                                route: route ? JSON.stringify(route) : undefined,
+                                distance: calculateDistance(route),
                             },
                         })}
                         variant="solid"
@@ -309,8 +350,6 @@ const styles = StyleSheet.create({
         bottom: 30,
         alignSelf: "center",
         height: 56,
-    },
-    marker: {
     }
 });
 

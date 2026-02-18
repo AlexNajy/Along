@@ -38,3 +38,19 @@ export const isPointInPolygon = (
 
     return inside;
 };
+
+export const calculateDistance = (route: any): string => {
+    if (!route?.geometry?.coordinates) return '';
+    
+    const coords = route.geometry.coordinates;
+    let totalMeters = 0;
+    
+    for (let i = 0; i < coords.length - 1; i++) {
+      totalMeters += distanceMeters(coords[i], coords[i + 1]);
+    }
+    
+    if (totalMeters < 1000) {
+      return `${Math.round(totalMeters)}m`;
+    }
+    return `${(totalMeters / 1000).toFixed(1)}km`;
+  };

@@ -2,7 +2,7 @@ import React from "react";
 import {Text, View} from "react-native"
 import { useLocalSearchParams } from "expo-router";
 
-const Walk = () => {
+const WalkPage = () => {
     const {id} = useLocalSearchParams()
     
     return (
@@ -12,4 +12,4 @@ const Walk = () => {
     )
 }
 
-export default Walk
+export default WalkPage

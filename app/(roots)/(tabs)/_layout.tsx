@@ -32,7 +32,7 @@ function TabsLayout() {
                 }}
             />
             <Tabs.Screen
-                name="walks"
+                name="activity"
                 options={{
                     title: 'Activity',
                     tabBarIcon: ({ color, size }) => (

@@ -47,11 +47,8 @@ const lightColors = {
     200: '#666876',
     300: '#191D31',
   },
-  ubc: {
-    primary: '#002145',
-    secondary: '#0055B7',
-  },
   danger: '#F75555',
+  blank: '#E5E7EB'
 };
 
 const darkColors = {
@@ -100,11 +97,8 @@ const darkColors = {
     200: '#9ca3af',
     300: '#6b7280',
   },
-  ubc: {
-    primary: '#4a90e2',
-    secondary: '#5ca3ff',
-  },
   danger: '#ff6b6b',
+  blank: '#E5E7EB'
 };
 
 type ColorScheme = typeof lightColors;
