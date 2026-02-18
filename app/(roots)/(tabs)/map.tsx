@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { router } from "expo-router";
 import { View, StyleSheet, Modal } from "react-native";
 import Mapbox from '@rnmapbox/maps';
-import { distanceMeters, isPointInPolygon } from '@/libs/geometry';
+import { distanceMeters, isPointInPolygon, calculateDistance } from '@/libs/geometry';
 import Button from "@/components/Button";
 import WalkPins from "@/components/WalkPins";
 import { useTheme } from "@/context/ThemeContext";
@@ -307,6 +307,7 @@ const Map = () => {
                 userRoute={route && !selectedWalkId ? {
                     start: userStartLoc || 'Your location',
                     end: userEndLoc || 'Selected destination',
+                    distance: calculateDistance(route),
                 } : null}
             />
 
@@ -322,6 +323,7 @@ const Map = () => {
                                 end: endMarker ? JSON.stringify(endMarker) : undefined,
                                 user: userLocation ? JSON.stringify({ lng: userLocation[0], lat: userLocation[1] }) : undefined,
                                 route: route ? JSON.stringify(route) : undefined,
+                                distance: calculateDistance(route),
                             },
                         })}
                         variant="solid"

@@ -4,6 +4,7 @@ import { supabase } from "@/libs/supabase";
 import { router, useLocalSearchParams } from "expo-router";
 import { useReverseGeocode } from "@/hooks/useReverseGeocode";
 import { KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from "react-native";
+import { calculateDistance } from "@/libs/geometry";
 
 export default function CreateWalks() {
     const [minutesInput, setMinutesInput] = useState("");
@@ -16,6 +17,7 @@ export default function CreateWalks() {
     const endMarker = params.end ? JSON.parse(Array.isArray(params.end) ? params.end[0] : params.end) : null;
     const userLocation = params.user ? JSON.parse(Array.isArray(params.user) ? params.user[0] : params.user) : null;
     const route = params.route ? JSON.parse(Array.isArray(params.route) ? params.route[0] : params.route) : null;
+    const distance = params.distance || (route ? calculateDistance(route) : null);
 
     const startCoords = startMarker ?? userLocation ?? null;
     const endCoords = endMarker ?? null;
