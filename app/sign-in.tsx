@@ -8,10 +8,12 @@ import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 function SignInContent() {
     const { colors } = useTheme();
     const { user } = useAuth();
+    const { isConnected } = useNetworkStatus();
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
@@ -32,6 +34,10 @@ function SignInContent() {
         try {
             setIsLoading(true);
 
+            if (!isConnected) {
+                Alert.alert('No Internet', 'Please connect to the internet to sign in');
+                return;
+            }
 
             const response = await GoogleSignin.signIn();
 

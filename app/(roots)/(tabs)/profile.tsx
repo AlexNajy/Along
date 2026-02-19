@@ -62,24 +62,31 @@ export default function ProfileScreen() {
         }
     };
 
-    const handleSignOut = async () => {
+    const handleSignOut = () => {
         Alert.alert(
-            'Sign Out',
-            'Are you sure you want to sign out?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Sign Out',
-                    style: 'destructive',
-                    onPress: async () => {
-                        setSigningOut(true);
-                        await signOut(); 
-                        setSigningOut(false);
-                    },
-                },
-            ]
+          'Sign Out',
+          'Are you sure you want to sign out?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Sign Out',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  setSigningOut(true);
+                  await signOut();
+                } catch (error) {
+                  console.error('Sign out error:', error);
+                  Alert.alert('Error', 'Failed to sign out. Please try again.');
+                } finally {
+                  setSigningOut(false);
+                }
+              },
+            },
+          ]
         );
-    };
+      };
+      
 
     const handleEditProfile = () => {
         Alert.alert('Edit Profile', 'This feature is coming soon!');
