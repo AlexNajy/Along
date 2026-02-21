@@ -202,13 +202,6 @@ const Map = () => {
 
     return (
         <View style={styles.container}>
-            {!isConnected && (
-                <Animated.View style={[styles.offlineBanner, animatedStyle]}>
-                    <Ionicons name="cloud-offline" size={20} color="white" />
-                    <Text style={styles.offlineText}>No Connection</Text>
-                </Animated.View>
-            )}
-
             <Mapbox.MapView
                 key={styleURL}
                 style={styles.map}
