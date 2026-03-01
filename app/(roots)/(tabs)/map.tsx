@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { router } from "expo-router";
-import { View, StyleSheet, Modal } from "react-native";
+import { View, StyleSheet, Text, Animated } from "react-native";
 import Mapbox from '@rnmapbox/maps';
 import { distanceMeters, isPointInPolygon, calculateDistance } from '@/libs/geometry';
 import Button from "@/components/Button";
@@ -15,12 +15,15 @@ import { useRouting } from "@/hooks/useRouting";
 import { useWalks } from "@/hooks/useWalks";
 import { WalkModal } from '@/components/WalkModal';
 import { useReverseGeocode } from "@/hooks/useReverseGeocode";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { triggerOfflineJiggle } from "@/app/_layout";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
 const USER_REROUTE_METERS = 10;
 
 const Map = () => {
+    const { isConnected } = useNetworkStatus();
     const { colors, isDark } = useTheme();
     const [campus] = useState<CampusConfig>(CAMPUSES.ubc);
     const [modalVisible, setModalVisible] = useState(false);
@@ -53,6 +56,17 @@ const Map = () => {
     const didMountRef = useRef(false);
 
     useEffect(() => {
+        if (!isConnected) {
+            setModalVisible(false);
+            setStartMarker(null);
+            setEndMarker(null);
+            clearRoute();
+            setSelectedWalkId(null);
+        }
+    }, [isConnected]);
+
+
+    useEffect(() => {
         if (userLocation && !selectedWalkId && !route) {
             const [lng, lat] = userLocation;
             if (isPointInPolygon(lng, lat, campus.boundary)) {
@@ -80,6 +94,8 @@ const Map = () => {
     }, [route, selectedWalkId]);
 
     useEffect(() => {
+        if (!isConnected) return;
+
         if (didMountRef.current) {
             if (!endMarker || (!startMarker && !userLocation)) {
                 clearRoute();
@@ -93,10 +109,10 @@ const Map = () => {
         } else {
             didMountRef.current = true;
         }
-    }, [startMarker, endMarker]);
+    }, [startMarker, endMarker, isConnected]);
 
     useEffect(() => {
-        if (!userLocation || !endMarker || startMarker) return;
+        if (!isConnected || !userLocation || !endMarker || startMarker) return;
 
         const distance = lastRoutedLocation.current
             ? distanceMeters(lastRoutedLocation.current, userLocation)
@@ -107,7 +123,7 @@ const Map = () => {
             fetchRoute(userLocation, end as [number, number], fitToBounds);
             lastRoutedLocation.current = userLocation;
         }
-    }, [userLocation]);
+    }, [userLocation, isConnected]);
 
     useEffect(() => {
         if (!selectedWalkId) clearAnimation();
@@ -121,30 +137,45 @@ const Map = () => {
         return true;
     };
 
+    const handleOfflineAction = (action: () => void, message?: string) => {
+        if (!isConnected) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            triggerOfflineJiggle?.();
+            return;
+        }
+        action();
+    };
+
     const handleMapPress = (point: any) => {
-        const [lng, lat] = point.geometry.coordinates;
-        if (!validatePoint(lng, lat)) return;
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setEndMarker({ lng, lat });
-        setSelectedWalkId(null);
+        handleOfflineAction(() => {
+            const [lng, lat] = point.geometry.coordinates;
+            if (!validatePoint(lng, lat)) return;
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setEndMarker({ lng, lat });
+            setSelectedWalkId(null);
+        });
     };
 
     const handleMapLongPress = (point: any) => {
-        const [lng, lat] = point.geometry.coordinates;
-        if (!validatePoint(lng, lat)) return;
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        setStartMarker({ lng, lat });
+        handleOfflineAction(() => {
+            const [lng, lat] = point.geometry.coordinates;
+            if (!validatePoint(lng, lat)) return;
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setStartMarker({ lng, lat });
+        });
     };
 
     const handleMarkerPress = (type: 'start' | 'end') => {
-        if (type === 'start') {
-            setStartMarker(null);
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        } else {
-            setEndMarker(startMarker);
-            setStartMarker(null);
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
-        }
+        handleOfflineAction(() => {
+            if (type === 'start') {
+                setStartMarker(null);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            } else {
+                setEndMarker(startMarker);
+                setStartMarker(null);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
+            }
+        });
     };
 
     const handleWalkPress = (walkId: string) => {
@@ -311,7 +342,6 @@ const Map = () => {
                 } : null}
             />
 
-
             {route && !selectedWalkId && (
                 <View style={styles.button}>
                     <Button
@@ -329,7 +359,7 @@ const Map = () => {
                         variant="solid"
                         size="solid"
                         fullWidth={false}
-                        disabled={isLoadingRoute}
+                        disabled={isLoadingRoute || !isConnected}
                     />
                 </View>
             )}
@@ -350,7 +380,25 @@ const styles = StyleSheet.create({
         bottom: 30,
         alignSelf: "center",
         height: 56,
-    }
+    },
+    offlineBanner: {
+        position: 'absolute',
+        top: 60,
+        alignSelf: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#ef4444',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 12,
+        zIndex: 1000,
+    },
+    offlineText: {
+        color: 'white',
+        fontSize: 14,
+        fontFamily: 'Rubik-SemiBold',
+    },
 });
 
 export default Map;
