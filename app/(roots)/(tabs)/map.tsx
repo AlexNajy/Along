@@ -16,7 +16,7 @@ import { useWalks } from "@/hooks/useWalks";
 import { WalkModal } from '@/components/WalkModal';
 import { useReverseGeocode } from "@/hooks/useReverseGeocode";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
-import { useJiggleAnimation } from "@/hooks/useJiggleAnimation";
+import { triggerOfflineJiggle } from "@/app/_layout";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
@@ -27,7 +27,6 @@ const Map = () => {
     const { colors, isDark } = useTheme();
     const [campus] = useState<CampusConfig>(CAMPUSES.ubc);
     const [modalVisible, setModalVisible] = useState(false);
-    const { jiggle, animatedStyle } = useJiggleAnimation();
 
     const { cameraState, cameraRef, fitToBounds, updateCameraCenter } = useMapCamera(campus.center);
     const { walks, selectedWalkId, setSelectedWalkId, selectedWalk } = useWalks();
@@ -141,7 +140,7 @@ const Map = () => {
     const handleOfflineAction = (action: () => void, message?: string) => {
         if (!isConnected) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            jiggle();
+            triggerOfflineJiggle?.();
             return;
         }
         action();

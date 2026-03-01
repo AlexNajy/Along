@@ -8,6 +8,7 @@ import { AuthGuard } from "@/components/AuthGaurd";
 import { View, Text, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { useJiggleAnimation } from "@/hooks/useJiggleAnimation";
 
 export default function RootLayout() {
     const [fontsLoaded] = useFonts({
@@ -39,31 +40,41 @@ export default function RootLayout() {
     );
 }
 
+export let triggerOfflineJiggle: (() => void) | null = null;
+
 function OfflineBanner() {
     const { isConnected } = useNetworkStatus();
+    const { animatedStyle, jiggle } = useJiggleAnimation();
+
+    useEffect(() => {
+        triggerOfflineJiggle = jiggle;
+    }, [jiggle]);
 
     if (isConnected) return null;
 
     return (
-        <View 
-            style={{
-                position: 'absolute',
-                top: 50,
-                alignSelf: 'center',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                backgroundColor: '#ef4444',
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                borderRadius: 12,
-                zIndex: 9999,
-            }}
+        <Animated.View 
+            style={[
+                {
+                    position: 'absolute',
+                    top: 50,
+                    alignSelf: 'center',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    backgroundColor: '#ef4444',
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 12,
+                    zIndex: 9999,
+                },
+                animatedStyle  
+            ]}
         >
             <Ionicons name="cloud-offline" size={18} color="white" />
             <Text style={{ color: 'white', fontSize: 13, fontFamily: 'Rubik-SemiBold' }}>
                 No Connection
             </Text>
-        </View>
+        </Animated.View>
     );
 }
