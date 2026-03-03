@@ -333,7 +333,16 @@ const Map = () => {
 
             <WalkModal
                 visible={modalVisible}
-                onClose={() => setModalVisible(false)}
+                onClose={() => {
+                    setModalVisible(false);
+                    if (selectedWalkId) {
+                        setSelectedWalkId(null);
+                    } else {
+                        setEndMarker(null);
+                        setStartMarker(null);
+                        clearRoute();
+                    }
+                }}
                 selectedWalk={selectedWalk}
                 userRoute={route && !selectedWalkId ? {
                     start: userStartLoc || 'Your location',
@@ -380,24 +389,6 @@ const styles = StyleSheet.create({
         bottom: 30,
         alignSelf: "center",
         height: 56,
-    },
-    offlineBanner: {
-        position: 'absolute',
-        top: 60,
-        alignSelf: 'center',
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        backgroundColor: '#ef4444',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 12,
-        zIndex: 1000,
-    },
-    offlineText: {
-        color: 'white',
-        fontSize: 14,
-        fontFamily: 'Rubik-SemiBold',
     },
 });
 
