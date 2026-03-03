@@ -349,29 +349,23 @@ const Map = () => {
                     end: userEndLoc || 'Selected destination',
                     distance: calculateDistance(route),
                 } : null}
+                onCreateWalk={() => {
+                    router.push({
+                        pathname: "/(roots)/create_walks",
+                        params: {
+                            start: startMarker ? JSON.stringify(startMarker) : undefined,
+                            end: endMarker ? JSON.stringify(endMarker) : undefined,
+                            user: userLocation ? JSON.stringify({ lng: userLocation[0], lat: userLocation[1] }) : undefined,
+                            route: route ? JSON.stringify(route) : undefined,
+                            distance: calculateDistance(route),
+                        },
+                    });
+                }}
+                onJoinWalk={() => {
+                    // TODO
+                    console.log('Join walk:', selectedWalkId);
+                }}
             />
-
-            {route && !selectedWalkId && (
-                <View style={styles.button}>
-                    <Button
-                        title={isLoadingRoute ? "Fetching..." : "Go Walk"}
-                        onPress={() => router.push({
-                            pathname: "/(roots)/create_walks",
-                            params: {
-                                start: startMarker ? JSON.stringify(startMarker) : undefined,
-                                end: endMarker ? JSON.stringify(endMarker) : undefined,
-                                user: userLocation ? JSON.stringify({ lng: userLocation[0], lat: userLocation[1] }) : undefined,
-                                route: route ? JSON.stringify(route) : undefined,
-                                distance: calculateDistance(route),
-                            },
-                        })}
-                        variant="solid"
-                        size="solid"
-                        fullWidth={false}
-                        disabled={isLoadingRoute || !isConnected}
-                    />
-                </View>
-            )}
         </View>
     );
 };

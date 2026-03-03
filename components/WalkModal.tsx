@@ -14,9 +14,18 @@ type Props = {
     end: string;
     distance?: string;
   } | null;
+  onCreateWalk?: () => void;
+  onJoinWalk?: () => void;
 };
 
-export const WalkModal: React.FC<Props> = ({ visible, onClose, selectedWalk, userRoute }) => {
+export const WalkModal: React.FC<Props> = ({ 
+  visible, 
+  onClose, 
+  selectedWalk, 
+  userRoute,
+  onCreateWalk,
+  onJoinWalk
+}) => {
   const { colors } = useTheme();
   const slideAnim = useRef(new Animated.Value(-300)).current;
   const [shouldRender, setShouldRender] = useState(false);
@@ -65,74 +74,102 @@ export const WalkModal: React.FC<Props> = ({ visible, onClose, selectedWalk, use
 
       {/* Content */}
       {selectedWalk ? (
-        <View style={styles.content}>
-          <View style={styles.row}>
-            <Ionicons name="location" size={20} color={colors.primary[500]} />
-            <View style={styles.textContainer}>
-              <Text style={[styles.label, { color: colors.text.secondary }]}>From</Text>
-              <Text style={[styles.value, { color: colors.text.primary }]}>
-                {selectedWalk.start_location || 'Start location'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <Ionicons name="flag" size={20} color={colors.secondary[500]} />
-            <View style={styles.textContainer}>
-              <Text style={[styles.label, { color: colors.text.secondary }]}>To</Text>
-              <Text style={[styles.value, { color: colors.text.primary }]}>
-                {selectedWalk.end_location || 'End location'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <Ionicons name="time" size={20} color={colors.primary[500]} />
-            <View style={styles.textContainer}>
-              <Text style={[styles.label, { color: colors.text.secondary }]}>Departure</Text>
-              <Text style={[styles.value, { color: colors.text.primary }]}>
-                {new Date(selectedWalk.start_time).toLocaleTimeString([], { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                })}
-              </Text>
-            </View>
-          </View>
-        </View>
-      ) : userRoute ? (
-        <View style={styles.content}>
-          <View style={styles.row}>
-            <Ionicons name="location" size={20} color={colors.primary[500]} />
-            <View style={styles.textContainer}>
-              <Text style={[styles.label, { color: colors.text.secondary }]}>From</Text>
-              <Text style={[styles.value, { color: colors.text.primary }]}>
-                {userRoute.start}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <Ionicons name="flag" size={20} color={colors.secondary[500]} />
-            <View style={styles.textContainer}>
-              <Text style={[styles.label, { color: colors.text.secondary }]}>To</Text>
-              <Text style={[styles.value, { color: colors.text.primary }]}>
-                {userRoute.end}
-              </Text>
-            </View>
-          </View>
-
-          {userRoute.distance && (
+        <>
+          <View style={styles.content}>
             <View style={styles.row}>
-              <Ionicons name="walk" size={20} color={colors.primary[500]} />
+              <Ionicons name="location" size={20} color={colors.primary[500]} />
               <View style={styles.textContainer}>
-                <Text style={[styles.label, { color: colors.text.secondary }]}>Distance</Text>
+                <Text style={[styles.label, { color: colors.text.secondary }]}>From</Text>
                 <Text style={[styles.value, { color: colors.text.primary }]}>
-                  {userRoute.distance}
+                  {selectedWalk.start_location || 'Start location'}
                 </Text>
               </View>
             </View>
+
+            <View style={styles.row}>
+              <Ionicons name="flag" size={20} color={colors.secondary[500]} />
+              <View style={styles.textContainer}>
+                <Text style={[styles.label, { color: colors.text.secondary }]}>To</Text>
+                <Text style={[styles.value, { color: colors.text.primary }]}>
+                  {selectedWalk.end_location || 'End location'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.row}>
+              <Ionicons name="time" size={20} color={colors.primary[500]} />
+              <View style={styles.textContainer}>
+                <Text style={[styles.label, { color: colors.text.secondary }]}>Departure</Text>
+                <Text style={[styles.value, { color: colors.text.primary }]}>
+                  {new Date(selectedWalk.start_time).toLocaleTimeString([], { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  })}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Button for selected walk */}
+          {onJoinWalk && (
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity 
+                style={[styles.button, { backgroundColor: colors.primary[500] }]}
+                onPress={onJoinWalk}
+              >
+                <Text style={styles.buttonText}>Walk</Text>
+              </TouchableOpacity>
+            </View>
           )}
-        </View>
+        </>
+      ) : userRoute ? (
+        <>
+          <View style={styles.content}>
+            <View style={styles.row}>
+              <Ionicons name="location" size={20} color={colors.primary[500]} />
+              <View style={styles.textContainer}>
+                <Text style={[styles.label, { color: colors.text.secondary }]}>From</Text>
+                <Text style={[styles.value, { color: colors.text.primary }]}>
+                  {userRoute.start}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.row}>
+              <Ionicons name="flag" size={20} color={colors.secondary[500]} />
+              <View style={styles.textContainer}>
+                <Text style={[styles.label, { color: colors.text.secondary }]}>To</Text>
+                <Text style={[styles.value, { color: colors.text.primary }]}>
+                  {userRoute.end}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Distance and Button Row */}
+          <View style={styles.bottomRow}>
+            {userRoute.distance && (
+              <View style={styles.distanceContainer}>
+                <Ionicons name="walk" size={20} color={colors.primary[500]} />
+                <View>
+                  <Text style={[styles.label, { color: colors.text.secondary }]}>Distance</Text>
+                  <Text style={[styles.value, { color: colors.text.primary }]}>
+                    {userRoute.distance}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {onCreateWalk && (
+              <TouchableOpacity 
+                style={[styles.button, { backgroundColor: colors.primary[500] }]}
+                onPress={onCreateWalk}
+              >
+                <Text style={styles.buttonText}>Walk</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </>
       ) : null}
     </Animated.View>
   );
@@ -183,6 +220,34 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 14,
+    fontFamily: 'Rubik-SemiBold',
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    gap: 12,
+  },
+  distanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  buttonContainer: {
+    marginTop: 16,
+    alignItems: 'flex-end',
+  },
+  button: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
     fontFamily: 'Rubik-SemiBold',
   },
 });
