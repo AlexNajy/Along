@@ -28,6 +28,9 @@ const Map = () => {
     const [campus] = useState<CampusConfig>(CAMPUSES.ubc);
     const [modalVisible, setModalVisible] = useState(false);
 
+    const [boundaryVisible, setBoundaryVisible] = useState(false);
+    const boundaryTimeoutRef = useRef<number | null>(null);
+
     const { cameraState, cameraRef, fitToBounds, updateCameraCenter } = useMapCamera(campus.center);
     const { walks, selectedWalkId, setSelectedWalkId, selectedWalk } = useWalks();
     const { animatedRoute: animatedWalkRoute, animateRoute, clearAnimation } = useRouteAnimation();
@@ -54,6 +57,14 @@ const Map = () => {
     );
 
     const didMountRef = useRef(false);
+
+    useEffect(() => {
+        return () => {
+            if (boundaryTimeoutRef.current) {
+                clearTimeout(boundaryTimeoutRef.current);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         if (!isConnected) {
@@ -132,6 +143,7 @@ const Map = () => {
     const validatePoint = (lng: number, lat: number) => {
         if (!isPointInPolygon(lng, lat, campus.boundary)) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            showBoundary();
             return false;
         }
         return true;
@@ -195,6 +207,18 @@ const Map = () => {
         }
     };
 
+    const showBoundary = () => {
+        if (boundaryTimeoutRef.current) {
+            clearTimeout(boundaryTimeoutRef.current);
+        }
+
+        setBoundaryVisible(true);
+
+        boundaryTimeoutRef.current = setTimeout(() => {
+            setBoundaryVisible(false);
+        }, 5000) as unknown as number;
+    };
+
     const styleURL = isDark
         ? 'mapbox://styles/alongapp/cmldiepmw007101sz252obyok/draft'
         : 'mapbox://styles/alongapp/cmlcnlosl006101szfwf099ap/draft';
@@ -243,7 +267,7 @@ const Map = () => {
                             lineColor: campus.themeColor,
                             lineWidth: 3,
                             lineDasharray: [4, 2],
-                            lineOpacity: 0.8,
+                            lineOpacity: boundaryVisible ? 0.8 : 0,
                         }}
                     />
                 </Mapbox.ShapeSource>
@@ -342,6 +366,7 @@ const Map = () => {
                         setStartMarker(null);
                         clearRoute();
                     }
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
                 }}
                 selectedWalk={selectedWalk}
                 userRoute={route && !selectedWalkId ? {
