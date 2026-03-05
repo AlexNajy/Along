@@ -1,58 +1,50 @@
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import Mapbox from '@rnmapbox/maps';
+import { isPointInPolygon } from '@/libs/geometry';
 
-export const useMapCamera = (initialCenter: [number, number]) => {
-    const [cameraState, setCameraState] = useState({
-        center: initialCenter,
-        zoom: 15,
-        pitch: 30,
-    });
-    
+export const useMapCamera = () => {
     const cameraRef = useRef<Mapbox.Camera>(null);
 
-    const fitToBounds = (routeGeoJSON: any) => {
+    const focusOnRoute = (routeGeoJSON: any) => {
         if (!routeGeoJSON?.geometry?.coordinates) return;
 
         const coordinates = routeGeoJSON.geometry.coordinates;
-        const lngs = coordinates.map((coord: [number, number]) => coord[0]);
-        const lats = coordinates.map((coord: [number, number]) => coord[1]);
-        
-        const minLng = Math.min(...lngs);
-        const maxLng = Math.max(...lngs);
-        const minLat = Math.min(...lats);
-        const maxLat = Math.max(...lats);
-        const center: [number, number] = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
-
-        const lngDiff = maxLng - minLng;
-        const latDiff = maxLat - minLat;
-        const maxDiff = Math.max(lngDiff, latDiff);
-        
-        let zoom = 15;
-        if (maxDiff > 0.05) zoom = 12;      
-        else if (maxDiff > 0.02) zoom = 13; 
-        else if (maxDiff > 0.01) zoom = 14; 
-        else if (maxDiff > 0.005) zoom = 15; 
-        else zoom = 16;                      
-
-        setCameraState({ center, zoom, pitch: 30 });
+        const lngs = coordinates.map((c: [number, number]) => c[0]);
+        const lats = coordinates.map((c: [number, number]) => c[1]);
 
         cameraRef.current?.setCamera({
             bounds: {
-                ne: [maxLng, maxLat],
-                sw: [minLng, minLat],
+                ne: [Math.max(...lngs), Math.max(...lats)],
+                sw: [Math.min(...lngs), Math.min(...lats)],
                 paddingTop: 160,
                 paddingRight: 60,
-                paddingBottom: 0,
+                paddingBottom: 260,
                 paddingLeft: 60,
             },
             pitch: 30,
+            animationMode: 'flyTo',
             animationDuration: 1000,
         });
     };
 
-    const updateCameraCenter = (center: [number, number]) => {
-        setCameraState(prev => ({ ...prev, center }));
+    const focusOnUser = (
+        userLocation: [number, number] | null,
+        boundary: any,
+        fallbackCenter: [number, number]
+    ) => {
+        const center =
+            userLocation && isPointInPolygon(userLocation[0], userLocation[1], boundary)
+                ? userLocation
+                : fallbackCenter;
+
+        cameraRef.current?.setCamera({
+            centerCoordinate: center,
+            zoomLevel: 15,
+            pitch: 30,
+            animationMode: 'flyTo',
+            animationDuration: 800,
+        });
     };
 
-    return { cameraState, cameraRef, fitToBounds, updateCameraCenter };
+    return { cameraRef, focusOnRoute, focusOnUser };
 };
