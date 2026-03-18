@@ -4,14 +4,20 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState, useCallback, useRef} from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View, Pressable, Animated} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, router } from "expo-router";
 import Mapbox from '@rnmapbox/maps';
-import { router } from "expo-router";
-import { Walk } from "@/constants/types"
+import { Walk, WalkRequest } from "@/constants/types"
 import { useAuth } from "@/context/AuthContext";
 import { LinearGradient } from 'expo-linear-gradient';
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
+
+const STATUS_COLORS: Record<string, string> = {
+    pending: "#F59E0B",
+    accepted: "#10B981",
+    declined: "#EF4444",
+    cancelled: "#9CA3AF",
+};
 
 const Activity = () => {
     const { colors, isDark } = useTheme();
@@ -19,9 +25,11 @@ const Activity = () => {
     const insets = useSafeAreaInsets();
     const [walks, setWalks] = useState<Walk[]>([]);
     const [pastWalks, setPastWalks] = useState<Walk[]>([]);
-    const [ loading, setLoading] = useState(true);
+    const [ , setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [walkDuration, setWalkDuration] = useState(0);
+    const [incomingRequests, setIncomingRequests] = useState<WalkRequest[]>([]);
+    const [outgoingRequests, setOutgoingRequests] = useState<WalkRequest[]>([]);
     const buttonScale = useRef(new Animated.Value(1)).current;
 
 
@@ -111,27 +119,74 @@ const Activity = () => {
         }
     }, [user]);
 
+
+
+    const fetchRequests = useCallback(async () => {
+        if (!user) return;
+    
+        const { data: incoming, error: inErr } = await supabase
+            .from("walk_requests")
+            .select(`*, walk:walks(start_location, end_location, start_time, walk_type)`)
+            .eq("owner_id", user.id)
+            .eq("status", "pending")
+            .order("created_at", { ascending: false });
+    
+        if (inErr) console.error("Error fetching incoming requests:", inErr.message);
+        else setIncomingRequests(incoming ?? []);
+    
+        const { data: outgoing, error: outErr } = await supabase
+            .from("walk_requests")
+            .select(`*, walk:walks(start_location, end_location, start_time, walk_type)`)
+            .eq("requester_id", user.id)
+            .in("status", ["pending", "accepted", "declined"])
+            .order("created_at", { ascending: false });
+    
+        if (outErr) console.error("Error fetching outgoing requests:", outErr.message);
+        else setOutgoingRequests(outgoing ?? []);
+    }, [user]);
+
+    const respondToRequest = async (requestId: string, status: "accepted" | "declined") => {
+        const { error } = await supabase
+            .from("walk_requests")
+            .update({ status })
+            .eq("id", requestId);
+        if (error) console.error("Error responding to request:", error.message);
+        else await fetchRequests();
+    };
+    
+    const cancelRequest = async (requestId: string) => {
+        const { error } = await supabase
+            .from("walk_requests")
+            .update({ status: "cancelled" })
+            .eq("id", requestId);
+        if (error) console.error("Error cancelling request:", error.message);
+        else await fetchRequests();
+    };
+
+
+
+    useEffect(() => {
+        const loadInitialData = async () => {
+            setLoading(true);
+            await Promise.all([fetchMyWalks(), fetchPastWalks(), fetchRequests()]);
+            setLoading(false);
+        };
+
+        loadInitialData();
+    }, [fetchMyWalks, fetchPastWalks, fetchRequests]);
+
     useFocusEffect(
         useCallback(() => {
             if (!user) return;
             fetchMyWalks();
             fetchPastWalks();
-        }, [user,fetchMyWalks, fetchPastWalks])
+            fetchRequests();
+        }, [user,fetchMyWalks, fetchPastWalks, fetchRequests])
     );
-
-    useEffect(() => {
-        const loadInitialData = async () => {
-            setLoading(true);
-            await Promise.all([fetchMyWalks(), fetchPastWalks()]);
-            setLoading(false);
-        };
-
-        loadInitialData();
-    }, [fetchMyWalks, fetchPastWalks]);
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await Promise.all([fetchMyWalks(), fetchPastWalks()]);
+        await Promise.all([fetchMyWalks(), fetchPastWalks(), fetchRequests()]);
         setRefreshing(false);
     };
 
@@ -231,6 +286,95 @@ const Activity = () => {
                         )}
 
                         </View>
+                        {(incomingRequests.length > 0 || outgoingRequests.length > 0) && (
+                            <View style={styles.requestsSection}>
+                                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+                                    Walk Requests
+                                </Text>
+
+                                {incomingRequests.length > 0 && (
+                                    <>
+                                        <Text style={[styles.subSectionLabel, { color: colors.text.secondary }]}>
+                                            Incoming
+                                        </Text>
+                                        {incomingRequests.map((req) => (
+                                            <View key={req.id} style={[styles.requestCard, { backgroundColor: colors.surface.primary }]}>
+                                                <View style={styles.requestCardLeft}>
+                                                    <View style={[styles.requestIconCircle, { backgroundColor: `${colors.primary[500]}1A` }]}>
+                                                        <Ionicons name="person" size={18} color={colors.primary[500]} />
+                                                    </View>
+                                                    <View style={styles.requestInfo}>
+                                                        <Text style={[styles.requestName, { color: colors.text.primary }]} numberOfLines={1}>
+                                                            {"Someone"}
+                                                        </Text>
+                                                        <Text style={[styles.requestRoute, { color: colors.text.secondary }]} numberOfLines={1}>
+                                                            {req.walk?.start_location} → {req.walk?.end_location}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                                <View style={styles.requestActions}>
+                                                    <Pressable
+                                                        style={[styles.actionBtn, styles.declineBtn, { borderColor: colors.surface.tertiary }]}
+                                                        onPress={() => respondToRequest(req.id, "declined")}
+                                                    >
+                                                        <Ionicons name="close" size={16} color={colors.text.secondary} />
+                                                    </Pressable>
+                                                    <Pressable
+                                                        style={[styles.actionBtn, { backgroundColor: colors.primary[500] }]}
+                                                        onPress={() => respondToRequest(req.id, "accepted")}
+                                                    >
+                                                        <Ionicons name="checkmark" size={16} color="#fff" />
+                                                    </Pressable>
+                                                </View>
+                                            </View>
+                                        ))}
+                                    </>
+                                )}
+
+                                {outgoingRequests.length > 0 && (
+                                    <>
+                                        <Text style={[styles.subSectionLabel, { color: colors.text.secondary }]}>
+                                            Outgoing
+                                        </Text>
+                                        {outgoingRequests.map((req) => (
+                                            <View key={req.id} style={[styles.requestCard, { backgroundColor: colors.surface.primary }]}>
+                                                <View style={styles.requestCardLeft}>
+                                                    <View style={[styles.requestIconCircle, { backgroundColor: `${colors.primary[500]}1A` }]}>
+                                                        <Ionicons name="walk" size={18} color={colors.primary[500]} />
+                                                    </View>
+                                                    <View style={styles.requestInfo}>
+                                                        <Text style={[styles.requestRoute, { color: colors.text.primary }]} numberOfLines={1}>
+                                                            {req.walk?.start_location} → {req.walk?.end_location}
+                                                        </Text>
+                                                        <Text style={[styles.requestDate, { color: colors.text.secondary }]}>
+                                                            {req.walk?.start_time ? formatTime(req.walk.start_time) : ""}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                                <View style={styles.requestStatusContainer}>
+                                                    <View style={[styles.statusBadge, { backgroundColor: `${STATUS_COLORS[req.status]}1A` }]}>
+                                                        <Text style={[styles.statusBadgeText, { color: STATUS_COLORS[req.status] }]}>
+                                                            {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                                                        </Text>
+                                                    </View>
+                                                    {req.status === "pending" && (
+                                                        <Pressable
+                                                            style={[styles.cancelBtn, { borderColor: colors.surface.tertiary }]}
+                                                            onPress={() => cancelRequest(req.id)}
+                                                        >
+                                                            <Text style={[styles.cancelBtnText, { color: colors.text.secondary }]}>
+                                                                Cancel
+                                                            </Text>
+                                                        </Pressable>
+                                                    )}
+                                                </View>
+                                            </View>
+                                        ))}
+                                    </>
+                                )}
+                            </View>
+                        )}
+                        
                         {pastWalks.length > 0 && (
                             <View style={styles.historySection}>
                                 <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
@@ -624,5 +768,97 @@ const styles = StyleSheet.create({
     },
     historyCardDate: {
         fontSize: 13,
+    },
+
+    requestsSection: {
+        marginTop: 24,
+    },
+    subSectionLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 8,
+        marginTop: 4,
+    },
+    requestCard: {
+        borderRadius: 16,
+        padding: 14,
+        marginBottom: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    requestCardLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        marginRight: 10,
+    },
+    requestIconCircle: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 10,
+    },
+    requestInfo: {
+        flex: 1,
+    },
+    requestName: {
+        fontSize: 15,
+        fontWeight: '600',
+        marginBottom: 2,
+    },
+    requestRoute: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    requestDate: {
+        fontSize: 13,
+        marginTop: 2,
+    },
+    requestActions: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    actionBtn: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    declineBtn: {
+        borderWidth: 1,
+    },
+    requestStatusContainer: {
+        alignItems: 'flex-end',
+        gap: 6,
+    },
+    statusBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
+    },
+    statusBadgeText: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    cancelBtn: {
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    cancelBtnText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
 });
