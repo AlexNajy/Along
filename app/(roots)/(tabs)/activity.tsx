@@ -125,25 +125,39 @@ const Activity = () => {
         if (!user) return;
     
         const { data: incoming, error: inErr } = await supabase
-            .from("walk_requests")
-            .select(`*, walk:walks(start_location, end_location, start_time, walk_type)`)
-            .eq("owner_id", user.id)
-            .eq("status", "pending")
-            .order("created_at", { ascending: false });
+        .from("walk_requests")
+        .select(`*, walk:walks(start_location, end_location, start_time, walk_type)`)
+        .eq("owner_id", user.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
     
-        if (inErr) console.error("Error fetching incoming requests:", inErr.message);
-        else setIncomingRequests(incoming ?? []);
+    if (inErr) {
+        console.error("Error fetching incoming requests:", inErr.message);
+    } else if (incoming && incoming.length > 0) {
+        const requesterIds = incoming.map((r) => r.requester_id);
+        const { data: profileData } = await supabase
+            .from("profiles")
+            .select("id, user_name, avatar")
+            .in("id", requesterIds);
     
-        const { data: outgoing, error: outErr } = await supabase
-            .from("walk_requests")
-            .select(`*, walk:walks(start_location, end_location, start_time, walk_type)`)
-            .eq("requester_id", user.id)
-            .in("status", ["pending", "accepted", "declined"])
-            .order("created_at", { ascending: false });
-    
+        setIncomingRequests(incoming.map((r) => ({
+            ...r,
+            requester: profileData?.find((p) => p.id === r.requester_id),
+        })));
+    } else {
+        setIncomingRequests([]);
+    }
+    const { data: outgoing, error: outErr } = await supabase
+        .from("walk_requests")
+        .select(`*, walk:walks(start_location, end_location, start_time, walk_type)`)
+        .eq("requester_id", user.id)
+        .in("status", ["pending", "accepted", "declined"])
+        .order("created_at", { ascending: false });
+
         if (outErr) console.error("Error fetching outgoing requests:", outErr.message);
         else setOutgoingRequests(outgoing ?? []);
-    }, [user]);
+
+        }, [user]);
 
     const respondToRequest = async (requestId: string, status: "accepted" | "declined") => {
         const { error } = await supabase
@@ -153,7 +167,7 @@ const Activity = () => {
         if (error) console.error("Error responding to request:", error.message);
         else await fetchRequests();
     };
-    
+
     const cancelRequest = async (requestId: string) => {
         const { error } = await supabase
             .from("walk_requests")
@@ -305,7 +319,7 @@ const Activity = () => {
                                                     </View>
                                                     <View style={styles.requestInfo}>
                                                         <Text style={[styles.requestName, { color: colors.text.primary }]} numberOfLines={1}>
-                                                            {"Someone"}
+                                                        {req.requester?.user_name ?? "Someone"}
                                                         </Text>
                                                         <Text style={[styles.requestRoute, { color: colors.text.secondary }]} numberOfLines={1}>
                                                             {req.walk?.start_location} → {req.walk?.end_location}
@@ -533,10 +547,11 @@ const Activity = () => {
                             onPress={endWalk}
                             onPressIn={handleEndWalkPressIn}
                             onPressOut={handleEndWalkPressOut}
-                            style={styles.endWalkButton}
+                            style={[styles.endWalkButton, { backgroundColor: isDark ? '#030712': '#ffffff'  }]}
                         >
-                            <Text style={styles.endWalkText}>End Walk</Text>
-                            <Ionicons name="walk-outline" size={18} color="#030712" />
+                            <Text style={[styles.endWalkText, { color: isDark ?  '#ffffff':'#030712'  }]}>End Walk</Text>
+                            <Ionicons name="walk-outline" size={18} color={isDark ? '#ffffff':'#030712'} />
+
                         </Pressable>
                     </LinearGradient>
                 </Animated.View>
@@ -579,7 +594,7 @@ const styles = StyleSheet.create({
     endWalkText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '##030712',
+        color: '#030712',
         letterSpacing: 0.3,
     },
 
