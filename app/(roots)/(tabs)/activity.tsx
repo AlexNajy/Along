@@ -15,11 +15,11 @@ Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
 const Activity = () => {
     const { colors, isDark } = useTheme();
-    const { user, loading: authLoading } = useAuth();
+    const { user } = useAuth();
     const insets = useSafeAreaInsets();
     const [walks, setWalks] = useState<Walk[]>([]);
     const [pastWalks, setPastWalks] = useState<Walk[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [ loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [walkDuration, setWalkDuration] = useState(0);
 
@@ -113,6 +113,7 @@ const Activity = () => {
         useCallback(() => {
             if (!user) return;
             fetchMyWalks();
+            fetchPastWalks();
         }, [user,fetchMyWalks, fetchPastWalks])
     );
 
@@ -352,21 +353,6 @@ const Activity = () => {
                             </View>
                         </View>
 
-
-                        <View style={[styles.infoCard, { backgroundColor: colors.surface.primary }]}>
-                            <View style={[styles.infoIconCircle, { backgroundColor: colors.primary[50] }]}>
-                                <Ionicons name="location-outline" size={20} color={colors.primary[500]} />
-                            </View>
-                            <View style={styles.infoTextContainer}>
-                                <Text style={[styles.infoLabel, { color: colors.text.secondary }]}>
-                                    Meeting Point
-                                </Text>
-                                <Text style={[styles.infoValue, { color: colors.text.primary }]}>
-                                    {activeWalk.start_location}
-                                </Text>
-                            </View>
-                        </View>
-
                         <View style={styles.buttonContainer}>
                             <Button
                                 title="End Walk"
@@ -390,16 +376,6 @@ export default Activity;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-
-    headerTitle: {
-        fontSize: 34,
-        fontWeight: "800",
-    },
-    headerSubtitle: {
-        marginTop: 6,
-        fontSize: 16,
-        opacity: 0.9,
     },
 
     heroCard: {
@@ -430,24 +406,6 @@ const styles = StyleSheet.create({
         textAlign: "center",
         opacity: 0.9,
         maxWidth: 280,
-    },
-    activeLabel: {
-        fontSize: 13,
-        fontWeight: "700",
-        marginBottom: 8,
-    },
-    activeRoute: {
-        fontSize: 18,
-        fontWeight: "800",
-        marginBottom: 6,
-    },
-    activeTime: {
-        fontSize: 14,
-        opacity: 0.9,
-    },
-
-    expandedCard: {
-        paddingBottom: 24,
     },
 
     activeHeader: {
@@ -501,38 +459,7 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '500',
     },
-    infoCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderRadius: 16,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    infoIconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
-    },
-    infoTextContainer: {
-        flex: 1,
-    },
-    infoLabel: {
-        fontSize: 13,
-        fontWeight: '600',
-        marginBottom: 4,
-    },
-    infoValue: {
-        fontSize: 17,
-        fontWeight: '700',
-    },
+
     buttonContainer: {
         marginTop: 8,
     },
