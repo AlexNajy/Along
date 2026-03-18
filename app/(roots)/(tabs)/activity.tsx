@@ -1,15 +1,15 @@
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/libs/supabase";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState, useCallback } from "react";
-import { RefreshControl, ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
+import React, { useEffect, useState, useCallback, useRef} from "react";
+import { RefreshControl, ScrollView, StyleSheet, Text, View, Pressable, Animated} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
-import Button from "@/components/Button";
 import Mapbox from '@rnmapbox/maps';
 import { router } from "expo-router";
 import { Walk } from "@/constants/types"
 import { useAuth } from "@/context/AuthContext";
+import { LinearGradient } from 'expo-linear-gradient';
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
@@ -22,6 +22,8 @@ const Activity = () => {
     const [ loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [walkDuration, setWalkDuration] = useState(0);
+    const buttonScale = useRef(new Animated.Value(1)).current;
+
 
     const fetchMyWalks = useCallback(async () => {
         if (!user) return;
@@ -158,13 +160,27 @@ const Activity = () => {
         await fetchMyWalks();
     };
 
+    const handleEndWalkPressIn = () => {
+        Animated.spring(buttonScale, {
+            toValue: 0.95,
+            useNativeDriver: true,
+        }).start();
+    };
+    
+    const handleEndWalkPressOut = () => {
+        Animated.spring(buttonScale, {
+            toValue: 1,
+            useNativeDriver: true,
+        }).start();
+    };
+
     return (
         <View style={[styles.container, { backgroundColor: colors.surface.secondary }]}>
             <ScrollView
                 contentContainerStyle={{
                     paddingTop: insets.top + 18,
                     paddingHorizontal: 18,
-                    paddingBottom: 24,
+                    paddingBottom: insets.bottom + 48,
                     flexGrow: 1,
 
                 }}
@@ -245,7 +261,7 @@ const Activity = () => {
                         )}
                     </>
                 ) : (
-                    <View>
+                    <View style={styles.activeContainer}>
 
                         <View style={styles.activeHeader}>
                             <Text style={[styles.activeHeaderTitle, { color: colors.text.primary }]}>
@@ -351,21 +367,36 @@ const Activity = () => {
                                     Destination
                                 </Text>
                             </View>
-                        </View>
-
-                        <View style={styles.buttonContainer}>
-                            <Button
-                                title="End Walk"
-                                onPress={endWalk}
-                                variant="danger"
-                                size="large"
-                                fullWidth
-                            />
-                        </View>
+                        </View>          
                     </View>
 
                 )}
             </ScrollView>
+            {activeWalk && (
+                <Animated.View style={[
+                    styles.endWalkWrapper,
+                    { 
+                        transform: [{ scale: buttonScale }],
+                    }
+                ]}>
+                    <LinearGradient
+                        colors={['#10b981', '#06b6d4', '#0ea5e9']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.endWalkGradientBorder}
+                    >
+                        <Pressable
+                            onPress={endWalk}
+                            onPressIn={handleEndWalkPressIn}
+                            onPressOut={handleEndWalkPressOut}
+                            style={styles.endWalkButton}
+                        >
+                            <Text style={styles.endWalkText}>End Walk</Text>
+                            <Ionicons name="walk-outline" size={18} color="#030712" />
+                        </Pressable>
+                    </LinearGradient>
+                </Animated.View>
+            )}
         </View>
     );
 };
@@ -376,6 +407,36 @@ export default Activity;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+
+    endWalkWrapper: {
+        alignSelf: 'center',
+        position: 'absolute',
+        bottom: 28,
+        shadowColor: '#10b981',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+        elevation: 8,
+    },
+    endWalkGradientBorder: {
+        borderRadius: 18,
+        padding: 2,
+    },
+    endWalkButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: 87,
+        paddingVertical: 14,
+        borderRadius: 16,
+        backgroundColor: '#ffffff',
+    },
+    endWalkText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '##030712',
+        letterSpacing: 0.3,
     },
 
     heroCard: {
@@ -460,11 +521,13 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
 
-    buttonContainer: {
-        marginTop: 8,
+    activeContainer: {
+        flex: 1,
     },
+    
+    
     mapCard: {
-        height: 300,
+        height: 380,
         borderRadius: 16,
         overflow: 'hidden',
         marginBottom: 16,
