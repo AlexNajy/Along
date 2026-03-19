@@ -124,7 +124,7 @@ export default function CreateWalks() {
             route: route,
         }
 
-        const { data, error } = await supabase.from("walks").insert([walk])
+        const { error } = await supabase.from("walks").insert([walk])
 
         if (error) {
             console.log("Error inserting walk:", error.message);
