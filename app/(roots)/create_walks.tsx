@@ -4,11 +4,10 @@ import { supabase } from "@/libs/supabase";
 import { router, useLocalSearchParams } from "expo-router";
 import { useReverseGeocode } from "@/hooks/useReverseGeocode";
 import { KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from "react-native";
-import { calculateDistance } from "@/libs/geometry";
 
 export default function CreateWalks() {
     const [minutesInput, setMinutesInput] = useState("");
-    const [vibe, setVibe] = useState("chill");
+    const [walk_type, setWalkType] = useState<"private" | "public">("private");
     const maxTime = 1440;
 
     const params = useLocalSearchParams();
@@ -17,7 +16,6 @@ export default function CreateWalks() {
     const endMarker = params.end ? JSON.parse(Array.isArray(params.end) ? params.end[0] : params.end) : null;
     const userLocation = params.user ? JSON.parse(Array.isArray(params.user) ? params.user[0] : params.user) : null;
     const route = params.route ? JSON.parse(Array.isArray(params.route) ? params.route[0] : params.route) : null;
-    const distance = params.distance || (route ? calculateDistance(route) : null);
 
     const startCoords = startMarker ?? userLocation ?? null;
     const endCoords = endMarker ?? null;
@@ -62,18 +60,6 @@ export default function CreateWalks() {
         }
     };
 
-    const reverseGeocode = async (lat: number, lng: number) => {
-        const { data, error } = await supabase.functions.invoke("reverse_geocode", {
-            body: { lng, lat },
-        });
-
-
-        console.log("reverse data:", data);
-        console.log("reverse error:", error);
-
-        if (error) throw error;
-        return (data?.place_name as string | null) ?? null;
-    };
 
     const handleCreateWalk = async () => {
         const {
@@ -109,6 +95,18 @@ export default function CreateWalks() {
             return;
         }
 
+        const { data: existingActive } = await supabase
+            .from("walks")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("status", "active")
+            .single();
+
+        if (existingActive) {
+            Alert.alert("Already walking", "You have an active walk in progress. End it before starting a new one.");
+            return;
+        }
+
 
 
         const walk = {
@@ -118,6 +116,7 @@ export default function CreateWalks() {
             end_location: endLocation,
             start_time: departureTime.toISOString(),
             status: createStatus(),
+            walk_type: walk_type,
             start_lng: Number(startCoords.lng),
             start_lat: Number(startCoords.lat),
             end_lng: Number(endCoords.lng),
@@ -129,7 +128,12 @@ export default function CreateWalks() {
 
         if (error) {
             console.log("Error inserting walk:", error.message);
-            Alert.alert("Error", error.message);
+            if (error.code === "23505") {
+                Alert.alert("Already scheduled", "You already have an upcoming walk. Complete or cancel it before creating a new one.");
+            } else {
+                Alert.alert("Error", error.message);
+            }
+        
         } else {
             Alert.alert("Success", "Walk created!");
             router.replace("../(tabs)/activity");
@@ -258,14 +262,14 @@ export default function CreateWalks() {
                             </Text>
                             <View className="flex-row justify-between px-1">
                                 <Pressable
-                                    onPress={() => setVibe("chill")}
-                                    className={`h-14 flex-1 rounded-2xl items-center justify-center mr-2 border ${vibe === "chill"
+                                    onPress={() => setWalkType("private")}
+                                    className={`h-14 flex-1 rounded-2xl items-center justify-center mr-2 border ${walk_type === "private"
                                         ? "bg-primary-300 border-primary-300"
                                         : "bg-background border-black-200"
                                         }`}
                                 >
                                     <Text
-                                        className={`text-lg font-rubikMedium ${vibe === "chill"
+                                        className={`text-lg font-rubikMedium ${walk_type === "private"
                                             ? "text-white"
                                             : "text-black-300"
                                             }`}
@@ -275,14 +279,14 @@ export default function CreateWalks() {
                                 </Pressable>
 
                                 <Pressable
-                                    onPress={() => setVibe("energetic")}
-                                    className={`h-14 flex-1 rounded-2xl items-center justify-center ml-2 border ${vibe === "energetic"
+                                    onPress={() => setWalkType("public")}
+                                    className={`h-14 flex-1 rounded-2xl items-center justify-center ml-2 border ${walk_type === "public"
                                         ? "bg-primary-300 border-primary-300"
                                         : "bg-background border-black-200"
                                         }`}
                                 >
                                     <Text
-                                        className={`text-lg font-rubikMedium ${vibe === "energetic"
+                                        className={`text-lg font-rubikMedium ${walk_type === "public"
                                             ? "text-white"
                                             : "text-black-300"
                                             }`}
