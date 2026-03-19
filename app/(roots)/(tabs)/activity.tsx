@@ -24,7 +24,6 @@ const Activity = () => {
     const { user } = useAuth();
     const insets = useSafeAreaInsets();
     const [walks, setWalks] = useState<Walk[]>([]);
-    const [pastWalks, setPastWalks] = useState<Walk[]>([]);
     const [ , setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [walkDuration, setWalkDuration] = useState(0);
@@ -101,25 +100,6 @@ const Activity = () => {
         return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     };
 
-    const fetchPastWalks = useCallback(async () => {
-        if (!user) return;
-
-        const { data, error } = await supabase
-            .from("walks")
-            .select("*")
-            .eq("user_id", user.id)
-            .eq("status", "past")
-            .order("start_time", { ascending: false })
-            .limit(5);
-
-        if (error) {
-            console.error("Error fetching past walks:", error.message);
-        } else {
-            setPastWalks(data ?? []);
-        }
-    }, [user]);
-
-
 
     const fetchRequests = useCallback(async () => {
         if (!user) return;
@@ -131,22 +111,24 @@ const Activity = () => {
         .eq("status", "pending")
         .order("created_at", { ascending: false });
     
-    if (inErr) {
-        console.error("Error fetching incoming requests:", inErr.message);
-    } else if (incoming && incoming.length > 0) {
-        const requesterIds = incoming.map((r) => r.requester_id);
-        const { data: profileData } = await supabase
-            .from("profiles")
-            .select("id, user_name, avatar")
-            .in("id", requesterIds);
-    
-        setIncomingRequests(incoming.map((r) => ({
-            ...r,
-            requester: profileData?.find((p) => p.id === r.requester_id),
-        })));
-    } else {
-        setIncomingRequests([]);
-    }
+        if (inErr) {
+            console.error("Error fetching incoming requests:", inErr.message);
+        } else if (incoming && incoming.length > 0) {
+            const requesterIds = incoming.map((r) => r.requester_id);
+            const { data: profileData } = await supabase
+                .from("profiles")
+                .select("id, user_name, avatar")
+                .in("id", requesterIds);
+        
+            setIncomingRequests(incoming.map((r) => ({
+                ...r,
+                requester: profileData?.find((p) => p.id === r.requester_id),
+            })));
+        } else {
+            setIncomingRequests([]);
+        }
+
+
     const { data: outgoing, error: outErr } = await supabase
         .from("walk_requests")
         .select(`*, walk:walks(start_location, end_location, start_time, walk_type)`)
@@ -182,25 +164,25 @@ const Activity = () => {
     useEffect(() => {
         const loadInitialData = async () => {
             setLoading(true);
-            await Promise.all([fetchMyWalks(), fetchPastWalks(), fetchRequests()]);
+            await Promise.all([fetchMyWalks(), fetchRequests()]);
             setLoading(false);
         };
 
         loadInitialData();
-    }, [fetchMyWalks, fetchPastWalks, fetchRequests]);
+    }, [fetchMyWalks, fetchRequests]);
 
     useFocusEffect(
         useCallback(() => {
             if (!user) return;
             fetchMyWalks();
-            fetchPastWalks();
+            
             fetchRequests();
-        }, [user,fetchMyWalks, fetchPastWalks, fetchRequests])
+        }, [user,fetchMyWalks, fetchRequests])
     );
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await Promise.all([fetchMyWalks(), fetchPastWalks(), fetchRequests()]);
+        await Promise.all([fetchMyWalks(), fetchRequests()]);
         setRefreshing(false);
     };
 
@@ -389,34 +371,7 @@ const Activity = () => {
                             </View>
                         )}
                         
-                        {pastWalks.length > 0 && (
-                            <View style={styles.historySection}>
-                                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
-                                    Walk History
-                                </Text>
-
-                                {pastWalks.map((walk) => (
-                                    <Pressable
-                                        key={walk.id}
-                                        style={[styles.historyCard, { backgroundColor: colors.surface.primary }]}
-                                    >
-                                        <View style={styles.historyCardContent}>
-                                            <View style={styles.historyCardLeft}>
-                                                <View style={[styles.historyIconCircle, { backgroundColor: `${colors.primary[500]}1A` }]}>
-                                                    <Ionicons name="walk" size={20} color={colors.primary[500]} />
-                                                </View>
-                                                <View style={styles.historyCardInfo}>
-                                                    <Text style={[styles.historyCardTitle, { color: colors.text.primary }]} numberOfLines={1}>
-                                                        {walk.start_location} to {walk.end_location}
-                                                    </Text>
-                                                </View>
-                                            </View>
-                                            <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
-                                        </View>
-                                    </Pressable>
-                                ))}
-                            </View>
-                        )}
+                        
                     </>
                 ) : (
                     <View style={styles.activeContainer}>
@@ -434,7 +389,7 @@ const Activity = () => {
                         <View style={[styles.mapCard, { backgroundColor: colors.surface.primary }]}>
                             <Mapbox.MapView
                                 style={styles.mapView}
-                                styleURL={isDark ? Mapbox.StyleURL.Street : Mapbox.StyleURL.Street}
+                                styleURL={Mapbox.StyleURL.Street}
                                 attributionPosition={{ bottom: 8, right: 8 }}
                                 logoEnabled={false}
                                 scaleBarEnabled={false}
@@ -589,7 +544,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 87,
         paddingVertical: 14,
         borderRadius: 16,
-        backgroundColor: '#ffffff',
     },
     endWalkText: {
         fontSize: 16,
@@ -736,53 +690,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    historySection: {
-        marginTop: 24,
-    },
     sectionTitle: {
         fontSize: 22,
         fontWeight: '700',
         marginBottom: 12,
-    },
-    historyCard: {
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    historyCardContent: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    historyCardLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-        marginRight: 12,
-    },
-    historyIconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
-    },
-    historyCardInfo: {
-        flex: 1,
-    },
-    historyCardTitle: {
-        fontSize: 15,
-        fontWeight: '600',
-        marginBottom: 4,
-    },
-    historyCardDate: {
-        fontSize: 13,
     },
 
     requestsSection: {
