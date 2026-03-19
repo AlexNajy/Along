@@ -9,7 +9,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === '(roots)';
+    const inAuthGroup = segments[0] === '(roots)' || segments[0] === 'profile';
+
 
     if (!user && inAuthGroup) {
       router.replace('/sign-in');

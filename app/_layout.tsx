@@ -4,6 +4,7 @@ import { useFonts } from "expo-font";
 import { useEffect } from "react";
 import * as SplashScreen from "expo-splash-screen";
 import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthGuard } from "@/components/AuthGaurd";
 import { View, Text, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -32,10 +33,12 @@ export default function RootLayout() {
 
     return (
         <AuthProvider>
-            <OfflineBanner />
-            <AuthGuard>
-                <Stack screenOptions={{ headerShown: false }} />
-            </AuthGuard>
+            <ThemeProvider>
+                <OfflineBanner />
+                <AuthGuard>
+                    <Stack screenOptions={{ headerShown: false }} />
+                </AuthGuard>
+            </ThemeProvider>
         </AuthProvider>
     );
 }

@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
+import { router } from 'expo-router';
 
 interface UserStats {
     total_walks: number;
@@ -97,7 +98,7 @@ export default function ProfileScreen() {
     };
 
     const handlePrivacy = () => {
-        Alert.alert('Privacy & Safety', 'This feature is coming soon!');
+        router.push('../profile/privacy');
     };
 
     const handleVerifyIdentity = () => {
