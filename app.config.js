@@ -20,7 +20,9 @@ export default {
             }
           ],
           NSLocationWhenInUseUsageDescription: "This app needs access to your location to show you on the map.",
-          NSLocationAlwaysAndWhenInUseUsageDescription: "This app needs access to your location to show you on the map."
+          NSLocationAlwaysAndWhenInUseUsageDescription: "This app needs access to your location to show you on the map.",
+          NSPhotoLibraryUsageDescription: "Allow Along to access your photos to set a profile picture."
+
         }
       },
       android: {
@@ -50,6 +52,7 @@ export default {
             RNMAPBOX_MAPS_DOWNLOAD_TOKEN: process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN
           }
         ],
+        "expo-image-picker",
         "expo-sqlite",
         "@react-native-google-signin/google-signin"
       ],
@@ -57,5 +60,6 @@ export default {
         typedRoutes: true,
         reactCompiler: true
       }
+      
     }
   };

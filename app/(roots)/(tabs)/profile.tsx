@@ -90,11 +90,11 @@ export default function ProfileScreen() {
       
 
     const handleEditProfile = () => {
-        Alert.alert('Edit Profile', 'This feature is coming soon!');
+        router.push('../profile/edit-profile');
     };
 
     const handleNotifications = () => {
-        Alert.alert('Notifications', 'This feature is coming soon!');
+        router.push('../profile/notifications');
     };
 
     const handlePrivacy = () => {
@@ -102,11 +102,11 @@ export default function ProfileScreen() {
     };
 
     const handleVerifyIdentity = () => {
-        Alert.alert('Verify Identity', 'This feature is coming soon!');
+        router.push('../profile/verify-identity');
     };
 
     const handleHelp = () => {
-        Alert.alert('Help & Support', 'This feature is coming soon!');
+        router.push('../profile/help');
     };
 
     if (authLoading || loading) {
