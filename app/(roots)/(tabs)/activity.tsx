@@ -24,7 +24,6 @@ const Activity = () => {
     const { user } = useAuth();
     const insets = useSafeAreaInsets();
     const [walks, setWalks] = useState<Walk[]>([]);
-    const [ , setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [walkDuration, setWalkDuration] = useState(0);
     const [incomingRequests, setIncomingRequests] = useState<WalkRequest[]>([]);
@@ -163,9 +162,7 @@ const Activity = () => {
 
     useEffect(() => {
         const loadInitialData = async () => {
-            setLoading(true);
             await Promise.all([fetchMyWalks(), fetchRequests()]);
-            setLoading(false);
         };
 
         loadInitialData();
@@ -175,7 +172,6 @@ const Activity = () => {
         useCallback(() => {
             if (!user) return;
             fetchMyWalks();
-            
             fetchRequests();
         }, [user,fetchMyWalks, fetchRequests])
     );
@@ -548,7 +544,6 @@ const styles = StyleSheet.create({
     endWalkText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#030712',
         letterSpacing: 0.3,
     },
 
