@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
 interface UserStats {
     total_walks: number;
@@ -68,12 +68,16 @@ export default function ProfileScreen() {
     }, [user]);
 
     useEffect(() => {
-        if (user) {
-            fetchUserStats();
-        } else {
-            setLoading(false);
-        }
-    }, [user, fetchUserStats]);
+        if (!user) setLoading(false);
+    }, [user]);
+    
+    useFocusEffect(
+        useCallback(() => {
+            if (user) fetchUserStats();
+        }, [user, fetchUserStats])
+    );
+
+
 
     const handleSignOut = () => {
         Alert.alert(
