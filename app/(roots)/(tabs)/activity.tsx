@@ -243,7 +243,8 @@ const Activity = () => {
                 {!activeWalk ? (
                     <>
 
-                        <View
+                        <Pressable
+                            onPress={() => upcomingWalk && router.push(`/walks/${upcomingWalk.id}`)}
                             style={[
                                 styles.heroCard,
                                 {
@@ -276,8 +277,9 @@ const Activity = () => {
                                 Starts {formatTime(upcomingWalk.start_time)}
                             </Text>
                         )}
+                        </Pressable>
 
-                        </View>
+                        
                         {(incomingRequests.length > 0 || outgoingRequests.length > 0) && (
                             <View style={styles.requestsSection}>
                                 <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
