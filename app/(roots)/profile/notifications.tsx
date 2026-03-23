@@ -63,7 +63,6 @@ export default function NotificationsScreen() {
 
         if (error) {
             console.error("Error saving notification pref:", error.message);
-            // Revert on failure
             setPrefs((prev) => ({ ...prev, [key]: !value }));
         }
     };
@@ -104,7 +103,7 @@ export default function NotificationsScreen() {
                     paddingBottom: insets.bottom + 24,
                 }}
             >
-                {/* Header */}
+                
                 <View style={styles.header}>
                     <Pressable
                         onPress={() => router.back()}
@@ -117,7 +116,7 @@ export default function NotificationsScreen() {
                     </Text>
                 </View>
 
-                {/* Section title */}
+                
                 <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
                     Push Notifications
                 </Text>
@@ -195,7 +194,7 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: "row",
         alignItems: "center",
-        marginBottom: 24,
+        marginBottom: 29,
         gap: 12,
     },
     backButton: {
@@ -212,7 +211,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 20,
         fontWeight: "700",
-        marginBottom: 12,
+        marginBottom: 6,
     },
     loadingText: {
         fontSize: 15,
@@ -220,6 +219,7 @@ const styles = StyleSheet.create({
         marginTop: 32,
     },
     card: {
+        marginTop: 13,
         borderRadius: 16,
         overflow: "hidden",
         shadowOffset: { width: 0, height: 1 },
