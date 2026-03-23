@@ -1,19 +1,12 @@
 import React, { useEffect, useState, useCallback } from "react";
-import {
-    View,
-    Text,
-    ScrollView,
-    Pressable,
-    StyleSheet,
-    Alert,
-    ActivityIndicator,
-} from "react-native";
+import {View, Text, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator,} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/libs/supabase";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
+import * as ImagePicker from 'expo-image-picker';
 
 type VerificationStatus = "unverified" | "pending" | "verified";
 
@@ -57,40 +50,43 @@ export default function VerifyIdentityScreen() {
         fetchVerificationStatus();
     }, [fetchVerificationStatus]);
 
-    const handleGovIdPress = () => {
-        // expo-image-picker is not installed — simulate selection
-        Alert.alert(
-            "Upload Government ID",
-            "In production this opens the device camera or photo library. For now, tap OK to simulate a successful upload.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "OK",
-                    onPress: () => {
-                        setGovIdUploaded(true);
-                        if (selfieUploaded) setStep(2);
-                        else setStep(1);
-                    },
-                },
-            ]
-        );
+    const handleGovIdPress = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission needed', 'Please allow access to your photo library.');
+            return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            quality: 0.8,
+        });
+        if (!result.canceled) {
+            setGovIdUploaded(true);
+            if (selfieUploaded) setStep(2);
+            else setStep(1);
+        }
     };
 
-    const handleSelfiePress = () => {
-        Alert.alert(
-            "Upload Selfie",
-            "In production this opens the device camera. For now, tap OK to simulate a successful upload.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "OK",
-                    onPress: () => {
-                        setSelfieUploaded(true);
-                        if (govIdUploaded) setStep(2);
-                    },
-                },
-            ]
-        );
+    const handleSelfiePress = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission needed', 'Please allow access to your camera.');
+            return;
+        }
+        
+        try {
+            const result = await ImagePicker.launchCameraAsync({
+                allowsEditing: true,
+                quality: 0.8,
+            });
+            if (!result.canceled) {
+                setSelfieUploaded(true);
+                if (govIdUploaded) setStep(2);
+            }
+        } catch {
+            Alert.alert('Camera not available', 'Please test this on a real device.');
+        }
     };
 
     const handleSubmit = async () => {
@@ -120,7 +116,7 @@ export default function VerifyIdentityScreen() {
                     paddingBottom: insets.bottom + 24,
                 }}
             >
-                {/* Header */}
+                
                 <View style={styles.header}>
                     <Pressable
                         onPress={() => router.back()}
@@ -158,7 +154,7 @@ export default function VerifyIdentityScreen() {
     );
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+
 
 type Colors = ReturnType<typeof import("@/context/ThemeContext").useTheme>["colors"];
 
@@ -232,12 +228,12 @@ function UnverifiedFlow({
                 </View>
             </View>
 
-            {/* Steps */}
+            
             <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
                 Steps to verify
             </Text>
 
-            {/* Step 1 — Government ID */}
+            
             <UploadStep
                 colors={colors}
                 stepNumber={1}
@@ -248,7 +244,7 @@ function UnverifiedFlow({
                 onPress={onGovIdPress}
             />
 
-            {/* Step 2 — Selfie */}
+            
             <UploadStep
                 colors={colors}
                 stepNumber={2}
@@ -259,7 +255,7 @@ function UnverifiedFlow({
                 onPress={onSelfiePress}
             />
 
-            {/* Submit */}
+            
             {step === 2 && (
                 <Pressable
                     onPress={onSubmit}
@@ -281,7 +277,7 @@ function UnverifiedFlow({
                 </Pressable>
             )}
 
-            {/* Privacy note */}
+            
             <Text style={[styles.privacyNote, { color: colors.text.tertiary }]}>
                 Your documents are encrypted and used only for identity verification. They are never shared with other users.
             </Text>
@@ -327,7 +323,7 @@ function UploadStep({
                 },
             ]}
         >
-            {/* Step number bubble */}
+            
             <View
                 style={[
                     styles.stepBubble,
@@ -358,7 +354,7 @@ function UploadStep({
                 )}
             </View>
 
-            {/* Text */}
+            
             <View style={styles.stepTextBlock}>
                 <Text style={[styles.stepLabel, { color: colors.text.primary }]}>
                     {label}
@@ -387,7 +383,6 @@ function UploadStep({
     );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
     container: { flex: 1 },

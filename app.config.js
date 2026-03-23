@@ -21,6 +21,7 @@ export default {
           ],
           NSLocationWhenInUseUsageDescription: "This app needs access to your location to show you on the map.",
           NSLocationAlwaysAndWhenInUseUsageDescription: "This app needs access to your location to show you on the map.",
+          NSCameraUsageDescription: "Allow Along to access your camera to take a verification selfie.",
           NSPhotoLibraryUsageDescription: "Allow Along to access your photos to set a profile picture."
 
         }
