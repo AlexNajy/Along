@@ -54,6 +54,6 @@ function TabsLayout() {
 }
 
 export default function Layout() {
-        return <TabsLayout />;
-    
+    return <TabsLayout />;
+
 }

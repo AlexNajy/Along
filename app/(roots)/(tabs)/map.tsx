@@ -57,6 +57,8 @@ const Map = () => {
 
     const didMountRef = useRef(false);
 
+    //TODO fix hook dependency arrys 
+
     // Cleanup boundary timeout on unmount
     useEffect(() => {
         return () => {
