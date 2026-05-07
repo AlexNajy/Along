@@ -1,21 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Image, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { View, Text, Image, ScrollView, Alert, TouchableOpacity, Pressable, Animated, StyleSheet } from 'react-native';
 import { supabase } from '@/libs/supabase';
-import Button from '@/components/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
+import { router, useFocusEffect } from 'expo-router';
 
 interface UserStats {
     total_walks: number;
     rating: number;
     connections: number;
     verified: boolean;
+    avatar: string | null;
 }
 
 export default function ProfileScreen() {
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
     const { user, loading: authLoading, signOut } = useAuth();
     const [loading, setLoading] = useState(true);
@@ -25,22 +27,22 @@ export default function ProfileScreen() {
         rating: 0.0,
         connections: 0,
         verified: false,
+        avatar: null,
     });
 
-    useEffect(() => {
-        if (user) {
-            fetchUserStats();
-        }
-        setLoading(false);
-    }, [user]);
+    const editScale = useRef(new Animated.Value(1)).current;
+    const signOutScale = useRef(new Animated.Value(1)).current;
 
-    const fetchUserStats = async () => {
+    const makeSpring = (ref: Animated.Value, toValue: number) =>
+        Animated.spring(ref, { toValue, useNativeDriver: true }).start();
+
+    const fetchUserStats = useCallback(async () => {
         if (!user) return;
 
         try {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('total_walks, ratings, connections, verified')
+                .select('total_walks, ratings, connections, verified, avatar')
                 .eq('id', user.id)
                 .single();
 
@@ -55,12 +57,27 @@ export default function ProfileScreen() {
                     rating: data.ratings || 0.0,
                     connections: data.connections || 0,
                     verified: data.verified || false,
+                    avatar: data.avatar || null,
                 });
             }
         } catch (error) {
             console.error('Error fetching stats:', error);
+        } finally {
+            setLoading(false);
         }
-    };
+    }, [user]);
+
+    useEffect(() => {
+        if (!user) setLoading(false);
+    }, [user]);
+    
+    useFocusEffect(
+        useCallback(() => {
+            if (user) fetchUserStats();
+        }, [user, fetchUserStats])
+    );
+
+
 
     const handleSignOut = () => {
         Alert.alert(
@@ -85,34 +102,33 @@ export default function ProfileScreen() {
             },
           ]
         );
-      };
-      
+    };
 
     const handleEditProfile = () => {
-        Alert.alert('Edit Profile', 'This feature is coming soon!');
+        router.push('../profile/edit-profile');
     };
 
     const handleNotifications = () => {
-        Alert.alert('Notifications', 'This feature is coming soon!');
+        router.push('../profile/notifications');
     };
 
     const handlePrivacy = () => {
-        Alert.alert('Privacy & Safety', 'This feature is coming soon!');
+        router.push('../profile/privacy');
     };
 
     const handleVerifyIdentity = () => {
-        Alert.alert('Verify Identity', 'This feature is coming soon!');
+        router.push('../profile/verify-identity');
     };
 
     const handleHelp = () => {
-        Alert.alert('Help & Support', 'This feature is coming soon!');
+        router.push('../profile/help');
     };
 
     if (authLoading || loading) {
         return (
-            <View 
-                style={{ 
-                    flex: 1, 
+            <View
+                style={{
+                    flex: 1,
                     backgroundColor: colors.surface.secondary,
                     paddingTop: insets.top,
                     justifyContent: 'center',
@@ -126,24 +142,21 @@ export default function ProfileScreen() {
         );
     }
 
-
     const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
-    const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+    const avatarUrl = stats.avatar || user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
 
     return (
         <View style={{ flex: 1, backgroundColor: colors.surface.secondary }}>
-            <ScrollView 
+            <ScrollView
                 style={{ flex: 1 }}
                 contentContainerStyle={{ paddingTop: insets.top }}
                 showsVerticalScrollIndicator={false}
             >
-
-
-                {/* Profile Card */}
+                
                 <View style={{ marginHorizontal: 24, marginBottom: 16 }}>
                     <View style={{ borderRadius:16, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, backgroundColor: colors.surface.primary }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                            {/* Avatar */}
+                            
                             <View style={{ width: 80, height: 80, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginRight: 16, backgroundColor: colors.primary[100] }}>
                                 {avatarUrl ? (
                                     <Image
@@ -158,7 +171,7 @@ export default function ProfileScreen() {
                                 )}
                             </View>
 
-                            {/* Name and Info */}
+                            
                             <View style={{ flex: 1 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                     <Text style={{ fontSize: 20, fontFamily: 'Rubik-Bold', marginRight: 8, color: colors.text.primary }}>
@@ -181,21 +194,34 @@ export default function ProfileScreen() {
                             </View>
                         </View>
 
-                        {/* Edit Profile Button */}
-                        <Button
-                            title="Edit Profile"
-                            onPress={handleEditProfile}
-                            variant="outline"
-                            size="medium"
-                            fullWidth
-                        />
+                       
+                        <Animated.View style={[styles.btnWrapper, { transform: [{ scale: editScale }] }]}>
+                            <LinearGradient
+                                colors={['#10b981', '#06b6d4', '#0ea5e9']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.gradientBorder}
+                            >
+                                <Pressable
+                                    onPress={handleEditProfile}
+                                    onPressIn={() => makeSpring(editScale, 0.95)}
+                                    onPressOut={() => makeSpring(editScale, 1)}
+                                    style={[styles.innerButton, { backgroundColor: isDark ? '#030712' : '#ffffff' }]}
+                                >
+                                    <Ionicons name="pencil-outline" size={16} color={isDark ? '#ffffff' : '#030712'} />
+                                    <Text style={[styles.btnText, { color: isDark ? '#ffffff' : '#030712' }]}>
+                                        Edit Profile
+                                    </Text>
+                                </Pressable>
+                            </LinearGradient>
+                        </Animated.View>
                     </View>
                 </View>
 
-                {/* Stats Cards */}
+               
                 <View style={{ paddingHorizontal: 24, marginBottom: 16 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                        {/* Total Walks */}
+                        
                         <View style={{ borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, flex: 1, marginRight: 8, alignItems: 'center', backgroundColor: colors.surface.primary }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                                 <Text style={{ fontSize: 24, fontFamily: 'Rubik-Bold', color: colors.text.primary }}>
@@ -205,7 +231,7 @@ export default function ProfileScreen() {
                             <Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>Total Walks</Text>
                         </View>
 
-                        {/* Rating */}
+                       
                         <View style={{ borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, flex: 1, marginHorizontal: 4, alignItems: 'center', backgroundColor: colors.surface.primary }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                                 <Text style={{ fontSize: 24, fontFamily: 'Rubik-Bold', color: colors.text.primary }}>
@@ -215,23 +241,23 @@ export default function ProfileScreen() {
                             <Text style={{ fontSize: 14, fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>Rating</Text>
                         </View>
 
-                        {/* Connections */}
+                       
                         <View style={{ borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, flex: 1, marginLeft: 8, alignItems: 'center', backgroundColor: colors.surface.primary }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                                <Text style={{ fontSize: 24, fontFamily: 'Rubik-Bold', color: colors.text.primary,  }}>
+                                <Text style={{ fontSize: 24, fontFamily: 'Rubik-Bold', color: colors.text.primary }}>
                                     {stats.connections}
                                 </Text>
                             </View>
-                            <Text style={{ fontSize: 13, fontFamily: 'Rubik-Regular', color: colors.text.secondary,  }}>Connections</Text>
+                            <Text style={{ fontSize: 13, fontFamily: 'Rubik-Regular', color: colors.text.secondary }}>Connections</Text>
                         </View>
                     </View>
                 </View>
 
-                {/* Settings Menu */}
+                
                 <View style={{ marginHorizontal: 24, marginBottom: 16 }}>
                     <View style={{ borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, overflow: 'hidden', backgroundColor: colors.surface.primary }}>
+
                         
-                        {/* Notifications */}
                         <TouchableOpacity
                             onPress={handleNotifications}
                             style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.surface.tertiary }}
@@ -250,7 +276,7 @@ export default function ProfileScreen() {
                             <Text style={{ fontSize: 20, color: colors.text.tertiary }}>›</Text>
                         </TouchableOpacity>
 
-                        {/* Privacy & Safety */}
+                       
                         <TouchableOpacity
                             onPress={handlePrivacy}
                             style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.surface.tertiary }}
@@ -269,7 +295,7 @@ export default function ProfileScreen() {
                             <Text style={{ fontSize: 20, color: colors.text.tertiary }}>›</Text>
                         </TouchableOpacity>
 
-                        {/* Verify Identity */}
+                        
                         <TouchableOpacity
                             onPress={handleVerifyIdentity}
                             style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.surface.tertiary }}
@@ -288,7 +314,7 @@ export default function ProfileScreen() {
                             <Text style={{ fontSize: 20, color: colors.text.tertiary }}>›</Text>
                         </TouchableOpacity>
 
-                        {/* Help & Support */}
+                        
                         <TouchableOpacity
                             onPress={handleHelp}
                             style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}
@@ -310,18 +336,58 @@ export default function ProfileScreen() {
                     </View>
                 </View>
 
-                {/* Sign Out Button */}
+                
                 <View style={{ marginHorizontal: 24, marginBottom: 32 }}>
-                    <Button
-                        title={signingOut ? "Signing Out..." : "Sign Out"}
-                        onPress={handleSignOut}
-                        variant="danger"
-                        size="medium"
-                        fullWidth
-                        disabled={signingOut}
-                    />
+                    <Animated.View style={[styles.btnWrapper, { transform: [{ scale: signOutScale }] }]}>
+                        <LinearGradient
+                            colors={['#ef4444', '#f97316']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.gradientBorder}
+                        >
+                            <Pressable
+                                onPress={handleSignOut}
+                                onPressIn={() => makeSpring(signOutScale, 0.95)}
+                                onPressOut={() => makeSpring(signOutScale, 1)}
+                                disabled={signingOut}
+                                style={[styles.innerButton, { backgroundColor: isDark ? '#030712' : '#ffffff', opacity: signingOut ? 0.6 : 1 }]}
+                            >
+                                <Ionicons name="log-out-outline" size={16} color={isDark ? '#ffffff' : '#030712'} />
+                                <Text style={[styles.btnText, { color: isDark ? '#ffffff' : '#030712' }]}>
+                                    {signingOut ? 'Signing Out...' : 'Sign Out'}
+                                </Text>
+                            </Pressable>
+                        </LinearGradient>
+                    </Animated.View>
                 </View>
             </ScrollView>
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    btnWrapper: {
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    gradientBorder: {
+        borderRadius: 14,
+        padding: 2,
+    },
+    innerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+    },
+    btnText: {
+        fontSize: 16,
+        fontWeight: '600',
+        letterSpacing: 0.2,
+    },
+});

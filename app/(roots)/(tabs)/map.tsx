@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { router } from "expo-router";
-import { View, StyleSheet, Text, Animated } from "react-native";
+import { View, StyleSheet } from "react-native";
 import Mapbox from '@rnmapbox/maps';
-import { distanceMeters, isPointInPolygon, calculateDistance } from '@/libs/geometry';
-import Button from "@/components/Button";
+import { distanceMeters, isPointInPolygon, calculateDistance, calculateEstimatedTime } from '@/libs/geometry';
 import WalkPins from "@/components/WalkPins";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from '@expo/vector-icons';
@@ -28,7 +27,10 @@ const Map = () => {
     const [campus] = useState<CampusConfig>(CAMPUSES.ubc);
     const [modalVisible, setModalVisible] = useState(false);
 
-    const { cameraState, cameraRef, fitToBounds, updateCameraCenter } = useMapCamera(campus.center);
+    const [boundaryVisible, setBoundaryVisible] = useState(false);
+    const boundaryTimeoutRef = useRef<number | null>(null);
+
+    const { cameraRef, focusOnRoute, focusOnUser } = useMapCamera();
     const { walks, selectedWalkId, setSelectedWalkId, selectedWalk } = useWalks();
     const { animatedRoute: animatedWalkRoute, animateRoute, clearAnimation } = useRouteAnimation();
     const {
@@ -36,7 +38,7 @@ const Map = () => {
         isLoadingRoute,
         lastRoutedLocation,
         fetchRoute,
-        clearRoute
+        clearRoute,
     } = useRouting(
         `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/${process.env.EXPO_PUBLIC_ROUTING_FUNCTION}`,
         process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
@@ -55,6 +57,16 @@ const Map = () => {
 
     const didMountRef = useRef(false);
 
+    //TODO fix hook dependency arrys 
+
+    // Cleanup boundary timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (boundaryTimeoutRef.current) clearTimeout(boundaryTimeoutRef.current);
+        };
+    }, []);
+
+    // Reset everything when offline
     useEffect(() => {
         if (!isConnected) {
             setModalVisible(false);
@@ -65,34 +77,32 @@ const Map = () => {
         }
     }, [isConnected]);
 
-
-    useEffect(() => {
-        if (userLocation && !selectedWalkId && !route) {
-            const [lng, lat] = userLocation;
-            if (isPointInPolygon(lng, lat, campus.boundary)) {
-                updateCameraCenter(userLocation);
-            }
-        }
-    }, [userLocation, selectedWalkId, route, campus.boundary]);
-
+    // Focus camera when a walk is selected or deselected
     useEffect(() => {
         if (selectedWalk?.route) {
-            fitToBounds(selectedWalk.route);
+            focusOnRoute(selectedWalk.route);
+        } else if (!route) {
+            focusOnUser(userLocation, campus.boundary, campus.center);
         }
-    }, [selectedWalk]);
+    }, [selectedWalkId]);
 
+    // Focus camera when a user route is fetched
     useEffect(() => {
-        if (route && !selectedWalkId && !isLoadingRoute) {
+        if (route && !selectedWalkId) {
+            focusOnRoute(route);
+        }
+    }, [route]);
+
+    // Show or hide modal based on route or selected walk
+    useEffect(() => {
+        if ((route && !selectedWalkId && !isLoadingRoute) || selectedWalkId) {
             setModalVisible(true);
+        } else if (!route && !selectedWalkId) {
+            setModalVisible(false);
         }
     }, [route, selectedWalkId, isLoadingRoute]);
 
-    useEffect(() => {
-        if (!route && !selectedWalkId) {
-            setModalVisible(false);
-        }
-    }, [route, selectedWalkId]);
-
+    // Fetch route when markers change
     useEffect(() => {
         if (!isConnected) return;
 
@@ -101,16 +111,15 @@ const Map = () => {
                 clearRoute();
                 return;
             }
-
             const start = startMarker ? [startMarker.lng, startMarker.lat] : userLocation!;
             const end = [endMarker.lng, endMarker.lat];
-
-            fetchRoute(start as [number, number], end as [number, number], fitToBounds);
+            fetchRoute(start as [number, number], end as [number, number]);
         } else {
             didMountRef.current = true;
         }
     }, [startMarker, endMarker, isConnected]);
 
+    // Re-route when user moves 
     useEffect(() => {
         if (!isConnected || !userLocation || !endMarker || startMarker) return;
 
@@ -120,24 +129,26 @@ const Map = () => {
 
         if (distance >= USER_REROUTE_METERS) {
             const end = [endMarker.lng, endMarker.lat];
-            fetchRoute(userLocation, end as [number, number], fitToBounds);
+            fetchRoute(userLocation, end as [number, number]);
             lastRoutedLocation.current = userLocation;
         }
     }, [userLocation, isConnected]);
 
+    // Clear walk animation when deselected
     useEffect(() => {
         if (!selectedWalkId) clearAnimation();
     }, [selectedWalkId]);
 
-    const validatePoint = (lng: number, lat: number) => {
+    const validatePoint = (lng: number, lat: number): boolean => {
         if (!isPointInPolygon(lng, lat, campus.boundary)) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            showBoundary();
             return false;
         }
         return true;
     };
 
-    const handleOfflineAction = (action: () => void, message?: string) => {
+    const handleOfflineAction = (action: () => void) => {
         if (!isConnected) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             triggerOfflineJiggle?.();
@@ -179,20 +190,40 @@ const Map = () => {
     };
 
     const handleWalkPress = (walkId: string) => {
+        const walk = walks.find(w => w.id === walkId);
+
         if (selectedWalkId === walkId) {
             setSelectedWalkId(null);
             setModalVisible(false);
         } else {
-            const selectedWalk = walks.find(w => w.id === walkId);
             setEndMarker(null);
             setStartMarker(null);
             clearRoute();
             setSelectedWalkId(walkId);
             setModalVisible(true);
-            if (selectedWalk?.route) {
-                animateRoute(selectedWalk.route);
-            }
+            if (walk?.route) animateRoute(walk.route);
         }
+    };
+
+    const handleModalClose = () => {
+        setModalVisible(false);
+        if (selectedWalkId) {
+            setSelectedWalkId(null);
+        } else {
+            setEndMarker(null);
+            setStartMarker(null);
+            clearRoute();
+        }
+        focusOnUser(userLocation, campus.boundary, campus.center);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
+    };
+
+    const showBoundary = () => {
+        if (boundaryTimeoutRef.current) clearTimeout(boundaryTimeoutRef.current);
+        setBoundaryVisible(true);
+        boundaryTimeoutRef.current = setTimeout(() => {
+            setBoundaryVisible(false);
+        }, 5000) as unknown as number;
     };
 
     const styleURL = isDark
@@ -216,12 +247,12 @@ const Map = () => {
                     ref={cameraRef}
                     minZoomLevel={12}
                     maxZoomLevel={18}
-                    zoomLevel={cameraState.zoom}
-                    pitch={cameraState.pitch}
+                    zoomLevel={15}
+                    pitch={30}
+                    centerCoordinate={campus.center}
                     animationMode="flyTo"
-                    animationDuration={2000}
+                    animationDuration={1000}
                     maxBounds={campus.maxBounds}
-                    centerCoordinate={cameraState.center}
                 />
 
                 <Mapbox.UserLocation
@@ -243,7 +274,7 @@ const Map = () => {
                             lineColor: campus.themeColor,
                             lineWidth: 3,
                             lineDasharray: [4, 2],
-                            lineOpacity: 0.8,
+                            lineOpacity: boundaryVisible ? 0.8 : 0,
                         }}
                     />
                 </Mapbox.ShapeSource>
@@ -333,36 +364,30 @@ const Map = () => {
 
             <WalkModal
                 visible={modalVisible}
-                onClose={() => setModalVisible(false)}
+                onClose={handleModalClose}
                 selectedWalk={selectedWalk}
                 userRoute={route && !selectedWalkId ? {
                     start: userStartLoc || 'Your location',
                     end: userEndLoc || 'Selected destination',
                     distance: calculateDistance(route),
+                    estimatedTime: calculateEstimatedTime(calculateDistance(route)),
                 } : null}
+                onCreateWalk={() => {
+                    router.push({
+                        pathname: "/(roots)/create_walks",
+                        params: {
+                            start: startMarker ? JSON.stringify(startMarker) : undefined,
+                            end: endMarker ? JSON.stringify(endMarker) : undefined,
+                            user: userLocation ? JSON.stringify({ lng: userLocation[0], lat: userLocation[1] }) : undefined,
+                            route: route ? JSON.stringify(route) : undefined,
+                            distance: calculateDistance(route),
+                        },
+                    });
+                }}
+                onJoinWalk={() => {
+                    console.log('Join walk:', selectedWalkId);
+                }}
             />
-
-            {route && !selectedWalkId && (
-                <View style={styles.button}>
-                    <Button
-                        title={isLoadingRoute ? "Fetching..." : "Go Walk"}
-                        onPress={() => router.push({
-                            pathname: "/(roots)/create_walks",
-                            params: {
-                                start: startMarker ? JSON.stringify(startMarker) : undefined,
-                                end: endMarker ? JSON.stringify(endMarker) : undefined,
-                                user: userLocation ? JSON.stringify({ lng: userLocation[0], lat: userLocation[1] }) : undefined,
-                                route: route ? JSON.stringify(route) : undefined,
-                                distance: calculateDistance(route),
-                            },
-                        })}
-                        variant="solid"
-                        size="solid"
-                        fullWidth={false}
-                        disabled={isLoadingRoute || !isConnected}
-                    />
-                </View>
-            )}
         </View>
     );
 };
@@ -374,30 +399,6 @@ const styles = StyleSheet.create({
     map: {
         flex: 1,
         width: "100%",
-    },
-    button: {
-        position: "absolute",
-        bottom: 30,
-        alignSelf: "center",
-        height: 56,
-    },
-    offlineBanner: {
-        position: 'absolute',
-        top: 60,
-        alignSelf: 'center',
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        backgroundColor: '#ef4444',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 12,
-        zIndex: 1000,
-    },
-    offlineText: {
-        color: 'white',
-        fontSize: 14,
-        fontFamily: 'Rubik-SemiBold',
     },
 });
 

@@ -1,27 +1,35 @@
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/libs/supabase";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState, useCallback } from "react";
-import { RefreshControl, ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
+import React, { useEffect, useState, useCallback, useRef} from "react";
+import { RefreshControl, ScrollView, StyleSheet, Text, View, Pressable, Animated} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
-import Button from "@/components/Button";
+import { useFocusEffect, router } from "expo-router";
 import Mapbox from '@rnmapbox/maps';
-import { router } from "expo-router";
-import { Walk } from "@/constants/types"
+import { Walk, WalkRequest } from "@/constants/types"
 import { useAuth } from "@/context/AuthContext";
+import { LinearGradient } from 'expo-linear-gradient';
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!);
 
+const STATUS_COLORS: Record<string, string> = {
+    pending: "#F59E0B",
+    accepted: "#10B981",
+    declined: "#EF4444",
+    cancelled: "#9CA3AF",
+};
+
 const Activity = () => {
     const { colors, isDark } = useTheme();
-    const { user, loading: authLoading } = useAuth();
+    const { user } = useAuth();
     const insets = useSafeAreaInsets();
     const [walks, setWalks] = useState<Walk[]>([]);
-    const [pastWalks, setPastWalks] = useState<Walk[]>([]);
-    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [walkDuration, setWalkDuration] = useState(0);
+    const [incomingRequests, setIncomingRequests] = useState<WalkRequest[]>([]);
+    const [outgoingRequests, setOutgoingRequests] = useState<WalkRequest[]>([]);
+    const buttonScale = useRef(new Animated.Value(1)).current;
+
 
     const fetchMyWalks = useCallback(async () => {
         if (!user) return;
@@ -91,44 +99,86 @@ const Activity = () => {
         return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     };
 
-    const fetchPastWalks = useCallback(async () => {
+
+    const fetchRequests = useCallback(async () => {
         if (!user) return;
-
-        const { data, error } = await supabase
-            .from("walks")
-            .select("*")
-            .eq("user_id", user.id)
-            .eq("status", "past")
-            .order("start_time", { ascending: false })
-            .limit(5);
-
-        if (error) {
-            console.error("Error fetching past walks:", error.message);
+    
+        const { data: incoming, error: inErr } = await supabase
+        .from("walk_requests")
+        .select(`*, walk:walks(start_location, end_location, start_time, walk_type)`)
+        .eq("owner_id", user.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+    
+        if (inErr) {
+            console.error("Error fetching incoming requests:", inErr.message);
+        } else if (incoming && incoming.length > 0) {
+            const requesterIds = incoming.map((r) => r.requester_id);
+            const { data: profileData } = await supabase
+                .from("profiles")
+                .select("id, user_name, avatar")
+                .in("id", requesterIds);
+        
+            setIncomingRequests(incoming.map((r) => ({
+                ...r,
+                requester: profileData?.find((p) => p.id === r.requester_id),
+            })));
         } else {
-            setPastWalks(data ?? []);
+            setIncomingRequests([]);
         }
-    }, [user]);
+
+
+    const { data: outgoing, error: outErr } = await supabase
+        .from("walk_requests")
+        .select(`*, walk:walks(start_location, end_location, start_time, walk_type)`)
+        .eq("requester_id", user.id)
+        .in("status", ["pending", "accepted", "declined"])
+        .order("created_at", { ascending: false });
+
+        if (outErr) console.error("Error fetching outgoing requests:", outErr.message);
+        else setOutgoingRequests(outgoing ?? []);
+
+        }, [user]);
+
+    const respondToRequest = async (requestId: string, status: "accepted" | "declined") => {
+        const { error } = await supabase
+            .from("walk_requests")
+            .update({ status })
+            .eq("id", requestId);
+        if (error) console.error("Error responding to request:", error.message);
+        else await fetchRequests();
+    };
+
+    const cancelRequest = async (requestId: string) => {
+        const { error } = await supabase
+            .from("walk_requests")
+            .update({ status: "cancelled" })
+            .eq("id", requestId);
+        if (error) console.error("Error cancelling request:", error.message);
+        else await fetchRequests();
+    };
+
+
+
+    useEffect(() => {
+        const loadInitialData = async () => {
+            await Promise.all([fetchMyWalks(), fetchRequests()]);
+        };
+
+        loadInitialData();
+    }, [fetchMyWalks, fetchRequests]);
 
     useFocusEffect(
         useCallback(() => {
             if (!user) return;
             fetchMyWalks();
-        }, [user,fetchMyWalks, fetchPastWalks])
+            fetchRequests();
+        }, [user,fetchMyWalks, fetchRequests])
     );
-
-    useEffect(() => {
-        const loadInitialData = async () => {
-            setLoading(true);
-            await Promise.all([fetchMyWalks(), fetchPastWalks()]);
-            setLoading(false);
-        };
-
-        loadInitialData();
-    }, [fetchMyWalks, fetchPastWalks]);
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await Promise.all([fetchMyWalks(), fetchPastWalks()]);
+        await Promise.all([fetchMyWalks(), fetchRequests()]);
         setRefreshing(false);
     };
 
@@ -157,13 +207,27 @@ const Activity = () => {
         await fetchMyWalks();
     };
 
+    const handleEndWalkPressIn = () => {
+        Animated.spring(buttonScale, {
+            toValue: 0.95,
+            useNativeDriver: true,
+        }).start();
+    };
+    
+    const handleEndWalkPressOut = () => {
+        Animated.spring(buttonScale, {
+            toValue: 1,
+            useNativeDriver: true,
+        }).start();
+    };
+
     return (
         <View style={[styles.container, { backgroundColor: colors.surface.secondary }]}>
             <ScrollView
                 contentContainerStyle={{
                     paddingTop: insets.top + 18,
                     paddingHorizontal: 18,
-                    paddingBottom: 24,
+                    paddingBottom: insets.bottom + 48,
                     flexGrow: 1,
 
                 }}
@@ -179,7 +243,8 @@ const Activity = () => {
                 {!activeWalk ? (
                     <>
 
-                        <View
+                        <Pressable
+                            onPress={() => upcomingWalk && router.push(`/walks/${upcomingWalk.id}`)}
                             style={[
                                 styles.heroCard,
                                 {
@@ -212,39 +277,102 @@ const Activity = () => {
                                 Starts {formatTime(upcomingWalk.start_time)}
                             </Text>
                         )}
+                        </Pressable>
 
-                        </View>
-                        {pastWalks.length > 0 && (
-                            <View style={styles.historySection}>
+                        
+                        {(incomingRequests.length > 0 || outgoingRequests.length > 0) && (
+                            <View style={styles.requestsSection}>
                                 <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
-                                    Walk History
+                                    Walk Requests
                                 </Text>
 
-                                {pastWalks.map((walk) => (
-                                    <Pressable
-                                        key={walk.id}
-                                        style={[styles.historyCard, { backgroundColor: colors.surface.primary }]}
-                                    >
-                                        <View style={styles.historyCardContent}>
-                                            <View style={styles.historyCardLeft}>
-                                                <View style={[styles.historyIconCircle, { backgroundColor: `${colors.primary[500]}1A` }]}>
-                                                    <Ionicons name="walk" size={20} color={colors.primary[500]} />
+                                {incomingRequests.length > 0 && (
+                                    <>
+                                        <Text style={[styles.subSectionLabel, { color: colors.text.secondary }]}>
+                                            Incoming
+                                        </Text>
+                                        {incomingRequests.map((req) => (
+                                            <View key={req.id} style={[styles.requestCard, { backgroundColor: colors.surface.primary }]}>
+                                                <View style={styles.requestCardLeft}>
+                                                    <View style={[styles.requestIconCircle, { backgroundColor: `${colors.primary[500]}1A` }]}>
+                                                        <Ionicons name="person" size={18} color={colors.primary[500]} />
+                                                    </View>
+                                                    <View style={styles.requestInfo}>
+                                                        <Text style={[styles.requestName, { color: colors.text.primary }]} numberOfLines={1}>
+                                                        {req.requester?.user_name ?? "Someone"}
+                                                        </Text>
+                                                        <Text style={[styles.requestRoute, { color: colors.text.secondary }]} numberOfLines={1}>
+                                                            {req.walk?.start_location} → {req.walk?.end_location}
+                                                        </Text>
+                                                    </View>
                                                 </View>
-                                                <View style={styles.historyCardInfo}>
-                                                    <Text style={[styles.historyCardTitle, { color: colors.text.primary }]} numberOfLines={1}>
-                                                        {walk.start_location} to {walk.end_location}
-                                                    </Text>
+                                                <View style={styles.requestActions}>
+                                                    <Pressable
+                                                        style={[styles.actionBtn, styles.declineBtn, { borderColor: colors.surface.tertiary }]}
+                                                        onPress={() => respondToRequest(req.id, "declined")}
+                                                    >
+                                                        <Ionicons name="close" size={16} color={colors.text.secondary} />
+                                                    </Pressable>
+                                                    <Pressable
+                                                        style={[styles.actionBtn, { backgroundColor: colors.primary[500] }]}
+                                                        onPress={() => respondToRequest(req.id, "accepted")}
+                                                    >
+                                                        <Ionicons name="checkmark" size={16} color="#fff" />
+                                                    </Pressable>
                                                 </View>
                                             </View>
-                                            <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
-                                        </View>
-                                    </Pressable>
-                                ))}
+                                        ))}
+                                    </>
+                                )}
+
+                                {outgoingRequests.length > 0 && (
+                                    <>
+                                        <Text style={[styles.subSectionLabel, { color: colors.text.secondary }]}>
+                                            Outgoing
+                                        </Text>
+                                        {outgoingRequests.map((req) => (
+                                            <View key={req.id} style={[styles.requestCard, { backgroundColor: colors.surface.primary }]}>
+                                                <View style={styles.requestCardLeft}>
+                                                    <View style={[styles.requestIconCircle, { backgroundColor: `${colors.primary[500]}1A` }]}>
+                                                        <Ionicons name="walk" size={18} color={colors.primary[500]} />
+                                                    </View>
+                                                    <View style={styles.requestInfo}>
+                                                        <Text style={[styles.requestRoute, { color: colors.text.primary }]} numberOfLines={1}>
+                                                            {req.walk?.start_location} → {req.walk?.end_location}
+                                                        </Text>
+                                                        <Text style={[styles.requestDate, { color: colors.text.secondary }]}>
+                                                            {req.walk?.start_time ? formatTime(req.walk.start_time) : ""}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                                <View style={styles.requestStatusContainer}>
+                                                    <View style={[styles.statusBadge, { backgroundColor: `${STATUS_COLORS[req.status]}1A` }]}>
+                                                        <Text style={[styles.statusBadgeText, { color: STATUS_COLORS[req.status] }]}>
+                                                            {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                                                        </Text>
+                                                    </View>
+                                                    {req.status === "pending" && (
+                                                        <Pressable
+                                                            style={[styles.cancelBtn, { borderColor: colors.surface.tertiary }]}
+                                                            onPress={() => cancelRequest(req.id)}
+                                                        >
+                                                            <Text style={[styles.cancelBtnText, { color: colors.text.secondary }]}>
+                                                                Cancel
+                                                            </Text>
+                                                        </Pressable>
+                                                    )}
+                                                </View>
+                                            </View>
+                                        ))}
+                                    </>
+                                )}
                             </View>
                         )}
+                        
+                        
                     </>
                 ) : (
-                    <View>
+                    <View style={styles.activeContainer}>
 
                         <View style={styles.activeHeader}>
                             <Text style={[styles.activeHeaderTitle, { color: colors.text.primary }]}>
@@ -259,7 +387,7 @@ const Activity = () => {
                         <View style={[styles.mapCard, { backgroundColor: colors.surface.primary }]}>
                             <Mapbox.MapView
                                 style={styles.mapView}
-                                styleURL={isDark ? Mapbox.StyleURL.Street : Mapbox.StyleURL.Street}
+                                styleURL={Mapbox.StyleURL.Street}
                                 attributionPosition={{ bottom: 8, right: 8 }}
                                 logoEnabled={false}
                                 scaleBarEnabled={false}
@@ -350,36 +478,37 @@ const Activity = () => {
                                     Destination
                                 </Text>
                             </View>
-                        </View>
-
-
-                        <View style={[styles.infoCard, { backgroundColor: colors.surface.primary }]}>
-                            <View style={[styles.infoIconCircle, { backgroundColor: colors.primary[50] }]}>
-                                <Ionicons name="location-outline" size={20} color={colors.primary[500]} />
-                            </View>
-                            <View style={styles.infoTextContainer}>
-                                <Text style={[styles.infoLabel, { color: colors.text.secondary }]}>
-                                    Meeting Point
-                                </Text>
-                                <Text style={[styles.infoValue, { color: colors.text.primary }]}>
-                                    {activeWalk.start_location}
-                                </Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.buttonContainer}>
-                            <Button
-                                title="End Walk"
-                                onPress={endWalk}
-                                variant="danger"
-                                size="large"
-                                fullWidth
-                            />
-                        </View>
+                        </View>          
                     </View>
 
                 )}
             </ScrollView>
+            {activeWalk && (
+                <Animated.View style={[
+                    styles.endWalkWrapper,
+                    { 
+                        transform: [{ scale: buttonScale }],
+                    }
+                ]}>
+                    <LinearGradient
+                        colors={['#10b981', '#06b6d4', '#0ea5e9']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.endWalkGradientBorder}
+                    >
+                        <Pressable
+                            onPress={endWalk}
+                            onPressIn={handleEndWalkPressIn}
+                            onPressOut={handleEndWalkPressOut}
+                            style={[styles.endWalkButton, { backgroundColor: isDark ? '#030712': '#ffffff'  }]}
+                        >
+                            <Text style={[styles.endWalkText, { color: isDark ?  '#ffffff':'#030712'  }]}>End Walk</Text>
+                            <Ionicons name="walk-outline" size={18} color={isDark ? '#ffffff':'#030712'} />
+
+                        </Pressable>
+                    </LinearGradient>
+                </Animated.View>
+            )}
         </View>
     );
 };
@@ -392,14 +521,32 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 
-    headerTitle: {
-        fontSize: 34,
-        fontWeight: "800",
+    endWalkWrapper: {
+        alignSelf: 'center',
+        position: 'absolute',
+        bottom: 28,
+        shadowColor: '#10b981',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+        elevation: 8,
     },
-    headerSubtitle: {
-        marginTop: 6,
+    endWalkGradientBorder: {
+        borderRadius: 18,
+        padding: 2,
+    },
+    endWalkButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: 87,
+        paddingVertical: 14,
+        borderRadius: 16,
+    },
+    endWalkText: {
         fontSize: 16,
-        opacity: 0.9,
+        fontWeight: '600',
+        letterSpacing: 0.3,
     },
 
     heroCard: {
@@ -430,24 +577,6 @@ const styles = StyleSheet.create({
         textAlign: "center",
         opacity: 0.9,
         maxWidth: 280,
-    },
-    activeLabel: {
-        fontSize: 13,
-        fontWeight: "700",
-        marginBottom: 8,
-    },
-    activeRoute: {
-        fontSize: 18,
-        fontWeight: "800",
-        marginBottom: 6,
-    },
-    activeTime: {
-        fontSize: 14,
-        opacity: 0.9,
-    },
-
-    expandedCard: {
-        paddingBottom: 24,
     },
 
     activeHeader: {
@@ -501,43 +630,14 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '500',
     },
-    infoCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderRadius: 16,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    infoIconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
-    },
-    infoTextContainer: {
+
+    activeContainer: {
         flex: 1,
     },
-    infoLabel: {
-        fontSize: 13,
-        fontWeight: '600',
-        marginBottom: 4,
-    },
-    infoValue: {
-        fontSize: 17,
-        fontWeight: '700',
-    },
-    buttonContainer: {
-        marginTop: 8,
-    },
+    
+    
     mapCard: {
-        height: 300,
+        height: 380,
         borderRadius: 16,
         overflow: 'hidden',
         marginBottom: 16,
@@ -587,52 +687,101 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    historySection: {
-        marginTop: 24,
-    },
     sectionTitle: {
         fontSize: 22,
         fontWeight: '700',
         marginBottom: 12,
     },
-    historyCard: {
+
+    requestsSection: {
+        marginTop: 24,
+    },
+    subSectionLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 8,
+        marginTop: 4,
+    },
+    requestCard: {
         borderRadius: 16,
-        padding: 16,
-        marginBottom: 12,
+        padding: 14,
+        marginBottom: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 4,
         elevation: 2,
     },
-    historyCardContent: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    historyCardLeft: {
+    requestCardLeft: {
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
-        marginRight: 12,
+        marginRight: 10,
     },
-    historyIconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+    requestIconCircle: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 12,
+        marginRight: 10,
     },
-    historyCardInfo: {
+    requestInfo: {
         flex: 1,
     },
-    historyCardTitle: {
+    requestName: {
         fontSize: 15,
         fontWeight: '600',
-        marginBottom: 4,
+        marginBottom: 2,
     },
-    historyCardDate: {
+    requestRoute: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    requestDate: {
         fontSize: 13,
+        marginTop: 2,
+    },
+    requestActions: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    actionBtn: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    declineBtn: {
+        borderWidth: 1,
+    },
+    requestStatusContainer: {
+        alignItems: 'flex-end',
+        gap: 6,
+    },
+    statusBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
+    },
+    statusBadgeText: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    cancelBtn: {
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    cancelBtnText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
 });
