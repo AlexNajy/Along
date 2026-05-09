@@ -1,7 +1,7 @@
 # Along
 
-A React Native app for coordinating group walks. Find nearby walks, join others, and track routes in real time.
-
+Along lets you find and join group walks happening near you. Open the map to see upcoming walks in your area, tap one to view the route and who's going, and send a join request to the organizer. When your request is accepted, you get turn-by-turn walking directions to the meeting point. You can also create your own walk just, set a start and end location, choose a walk type, and let others come to you.
+  
 ## Stack
 
 | Layer | Technology |
@@ -82,16 +82,3 @@ constants/
   types.ts                   # Walk, Profile, WalkRequest types
 ```
 
-## Key Data Types
-
-```ts
-Walk         { id, start/end location, start/end lat/lng, route (GeoJSON), status, walk_type, max_walkers }
-Profile      { id, user_name, avatar, verified, total_walks, rating, connections }
-WalkRequest  { id, walk_id, requester_id, owner_id, status: "pending"|"accepted"|"declined"|"cancelled" }
-```
-
-## Theme
-
-`ThemeContext` exposes a `colors` object with `primary`, `secondary`, `accent`, `surface`, `text`, `black`, and `danger` palettes that adapt to system light/dark mode. The same tokens are registered in `tailwind.config.js` so they work as NativeWind class names too.
-
-Custom presets: `rounded-card` (16px), `rounded-button` (12px), `p-safe` (16), `p-card` (20).
