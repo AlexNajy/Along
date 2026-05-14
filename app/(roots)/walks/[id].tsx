@@ -131,7 +131,7 @@ export default function WalkDetailScreen() {
         setIsCancelling(true);
         const { error: cancelError } = await supabase
             .from("walks")
-            .update({ status: "past" })
+            .update({ status: "cancelled" })
             .eq("id", walk.id);
 
         if (cancelError) {

@@ -51,33 +51,6 @@ const Activity = () => {
     const activeWalk = walks.find(w => w.status === "active") ?? null;
     const upcomingWalk = walks.find(w => w.status === "upcoming") ?? null;
 
-    useEffect(() => {
-        if (!upcomingWalk) return;
-
-        const checkAndActivate = async () => {
-            const startTime = new Date(upcomingWalk.start_time).getTime();
-            const now = Date.now();
-
-            if (now >= startTime) {
-                const { error } = await supabase
-                    .from("walks")
-                    .update({ status: "active" })
-                    .eq("id", upcomingWalk.id);
-
-                if (error) {
-                    console.error("Error activating walk:", error.message);
-                } else {
-                    await fetchMyWalks();
-                }
-            }
-        };
-        
-        checkAndActivate();
-        
-        const interval = setInterval(checkAndActivate, 10000);
-
-        return () => clearInterval(interval);
-    }, [upcomingWalk, fetchMyWalks]);
 
     useEffect(() => {
         if (!activeWalk || activeWalk.status !== "active") return;
@@ -191,6 +164,19 @@ const Activity = () => {
           minute: "2-digit",
         });
 
+    const startWalk = async () => {
+        if (!upcomingWalk) return;
+        const { error } = await supabase
+            .from("walks")
+            .update({ status: "active" })
+            .eq("id", upcomingWalk.id);
+        if (error) {
+            console.error("Error starting walk:", error.message);
+            return;
+        }
+        await fetchMyWalks();
+    };
+
     const endWalk = async () => {
         if (!activeWalk) return;
 
@@ -277,6 +263,22 @@ const Activity = () => {
                                 Starts {formatTime(upcomingWalk.start_time)}
                             </Text>
                         )}
+                            {upcomingWalk && (
+                                <LinearGradient
+                                    colors={['#10b981', '#06b6d4', '#0ea5e9']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={[styles.startWalkGradientBorder, { marginTop: 18 }]}
+                                >
+                                    <Pressable
+                                        onPress={(e) => { e.stopPropagation(); startWalk(); }}
+                                        style={[styles.startWalkButton, { backgroundColor: isDark ? '#030712' : '#ffffff' }]}
+                                    >
+                                        <Text style={[styles.startWalkText, { color: isDark ? '#ffffff' : '#030712' }]}>Start Walk</Text>
+                                        <Ionicons name="walk-outline" size={18} color={isDark ? '#ffffff' : '#030712'} />
+                                    </Pressable>
+                                </LinearGradient>
+                            )}
                         </Pressable>
 
                         
@@ -544,6 +546,24 @@ const styles = StyleSheet.create({
         borderRadius: 16,
     },
     endWalkText: {
+        fontSize: 16,
+        fontWeight: '600',
+        letterSpacing: 0.3,
+    },
+    startWalkGradientBorder: {
+        borderRadius: 18,
+        padding: 2,
+        alignSelf: 'stretch',
+    },
+    startWalkButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingVertical: 14,
+        borderRadius: 16,
+    },
+    startWalkText: {
         fontSize: 16,
         fontWeight: '600',
         letterSpacing: 0.3,

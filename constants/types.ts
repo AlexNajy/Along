@@ -5,7 +5,7 @@ export type Walk = {
     start_location?: string;
     end_location?: string;
     start_time: string;
-    status?: "active" | "upcoming" | "past";
+    status?: "active" | "upcoming" | "past" | "cancelled";
     walk_type?: "public" | "private";
     max_walkers?: number;
     start_lng: number;  
