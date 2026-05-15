@@ -16,9 +16,9 @@ export const useMapCamera = () => {
             bounds: {
                 ne: [Math.max(...lngs), Math.max(...lats)],
                 sw: [Math.min(...lngs), Math.min(...lats)],
-                paddingTop: 160,
+                paddingTop: 200,
                 paddingRight: 60,
-                paddingBottom: 260,
+                paddingBottom: 100,
                 paddingLeft: 60,
             },
             pitch: 30,

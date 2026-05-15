@@ -13,6 +13,7 @@ import { useMapCamera } from "@/hooks/useMapCamera";
 import { useRouting } from "@/hooks/useRouting";
 import { useWalks } from "@/hooks/useWalks";
 import { WalkModal } from '@/components/WalkModal';
+import { MapMenu } from '@/components/MapMenu';
 import { useReverseGeocode } from "@/hooks/useReverseGeocode";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { triggerOfflineJiggle } from "@/app/_layout";
@@ -26,6 +27,7 @@ const Map = () => {
     const { colors, isDark } = useTheme();
     const [campus] = useState<CampusConfig>(CAMPUSES.ubc);
     const [modalVisible, setModalVisible] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
 
     const [boundaryVisible, setBoundaryVisible] = useState(false);
     const boundaryTimeoutRef = useRef<number | null>(null);
@@ -72,6 +74,7 @@ const Map = () => {
             setModalVisible(false);
             setStartMarker(null);
             setEndMarker(null);
+            setMenuOpen(false);
             clearRoute();
             setSelectedWalkId(null);
         }
@@ -97,6 +100,7 @@ const Map = () => {
     useEffect(() => {
         if ((route && !selectedWalkId && !isLoadingRoute) || selectedWalkId) {
             setModalVisible(true);
+            setMenuOpen(false);
         } else if (!route && !selectedWalkId) {
             setModalVisible(false);
         }
@@ -361,6 +365,8 @@ const Map = () => {
                     selectedWalkId={selectedWalkId}
                 />
             </Mapbox.MapView>
+
+            <MapMenu open={menuOpen} onToggle={() => setMenuOpen(prev => !prev)} />
 
             <WalkModal
                 visible={modalVisible}
