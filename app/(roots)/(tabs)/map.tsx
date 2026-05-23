@@ -28,6 +28,7 @@ const Map = () => {
     const [campus] = useState<CampusConfig>(CAMPUSES.ubc);
     const [modalVisible, setModalVisible] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
+    const [walksVisible, setWalksVisible] = useState(true);
 
     const [boundaryVisible, setBoundaryVisible] = useState(false);
     const boundaryTimeoutRef = useRef<number | null>(null);
@@ -359,14 +360,36 @@ const Map = () => {
                     </Mapbox.PointAnnotation>
                 )}
 
-                <WalkPins
-                    walks={walks}
-                    onWalkPress={handleWalkPress}
-                    selectedWalkId={selectedWalkId}
-                />
+                {walksVisible && (
+                    <WalkPins
+                        walks={walks}
+                        onWalkPress={handleWalkPress}
+                        selectedWalkId={selectedWalkId}
+                    />
+                )}
             </Mapbox.MapView>
 
-            <MapMenu open={menuOpen} onToggle={() => setMenuOpen(prev => !prev)} />
+            <MapMenu
+                open={menuOpen}
+                onToggle={() => {
+                    if (modalVisible) handleModalClose();
+                    setMenuOpen(prev => !prev);
+                }}
+                actions={[
+                    {
+                        icon: 'add',
+                        onPress: () => { router.push('/(roots)/create_walks'); setMenuOpen(false); },
+                    },
+                    {
+                        icon: 'locate-outline',
+                        onPress: () => { focusOnUser(userLocation, campus.boundary, campus.center); setMenuOpen(false); },
+                    },
+                    {
+                        icon: walksVisible ? 'eye-off-outline' : 'eye-outline',
+                        onPress: () => { setWalksVisible(v => !v); setMenuOpen(false); },
+                    },
+                ]}
+            />
 
             <WalkModal
                 visible={modalVisible}

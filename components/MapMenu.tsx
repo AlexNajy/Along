@@ -1,18 +1,22 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, TouchableOpacity, Text, StyleSheet, Animated } from "react-native";
+import { View, TouchableOpacity, StyleSheet, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
+
+interface MenuAction {
+    icon: React.ComponentProps<typeof Ionicons>['name'];
+    onPress: () => void;
+}
 
 interface MapMenuProps {
     open: boolean;
     onToggle: () => void;
+    actions: MenuAction[];
 }
 
-const LABELS = ['1', '2', '3'];
-
-export const MapMenu = ({ open, onToggle }: MapMenuProps) => {
+export const MapMenu = ({ open, onToggle, actions }: MapMenuProps) => {
     const { colors } = useTheme();
-    const anims = useRef(LABELS.map(() => new Animated.Value(0))).current;
+    const anims = useRef(actions.map(() => new Animated.Value(0))).current;
     const toggleAnim = useRef(new Animated.Value(0)).current;
     const [shouldRender, setShouldRender] = useState(false);
 
@@ -57,7 +61,7 @@ export const MapMenu = ({ open, onToggle }: MapMenuProps) => {
         <View style={styles.wrapper}>
             {shouldRender && (
                 <View style={styles.items}>
-                    {LABELS.map((label, i) => {
+                    {actions.map((action, i) => {
                         const opacity = anims[i];
                         const translateY = anims[i].interpolate({
                             inputRange: [0, 1],
@@ -65,13 +69,13 @@ export const MapMenu = ({ open, onToggle }: MapMenuProps) => {
                         });
 
                         return (
-                            <Animated.View key={label} style={{ opacity, transform: [{ translateY }] }}>
+                            <Animated.View key={i} style={{ opacity, transform: [{ translateY }] }}>
                                 <TouchableOpacity
                                     style={[styles.circle, { backgroundColor: colors.surface.primary }]}
                                     activeOpacity={0.8}
-                                    onPress={() => {}}
+                                    onPress={action.onPress}
                                 >
-                                    <Text style={[styles.label, { color: colors.text.primary }]}>{label}</Text>
+                                    <Ionicons name={action.icon} size={20} color={colors.text.primary} />
                                 </TouchableOpacity>
                             </Animated.View>
                         );
@@ -119,9 +123,5 @@ const styles = StyleSheet.create({
     items: {
         marginBottom: 8,
         gap: 8,
-    },
-    label: {
-        fontSize: 16,
-        fontWeight: '600',
     },
 });
