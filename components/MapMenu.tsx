@@ -1,5 +1,5 @@
-import React from "react";
-import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { View, TouchableOpacity, Text, StyleSheet, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -8,32 +8,89 @@ interface MapMenuProps {
     onToggle: () => void;
 }
 
+const LABELS = ['1', '2', '3'];
+
 export const MapMenu = ({ open, onToggle }: MapMenuProps) => {
     const { colors } = useTheme();
+    const anims = useRef(LABELS.map(() => new Animated.Value(0))).current;
+    const toggleAnim = useRef(new Animated.Value(0)).current;
+    const [shouldRender, setShouldRender] = useState(false);
+
+    useEffect(() => {
+        if (open) {
+            anims.forEach(anim => anim.setValue(0));
+            toggleAnim.setValue(0);
+            setShouldRender(true);
+
+            Animated.parallel([
+                Animated.timing(toggleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+                Animated.stagger(
+                    40,
+                    [...anims].reverse().map(anim =>
+                        Animated.timing(anim, { toValue: 1, duration: 200, useNativeDriver: true })
+                    )
+                ),
+            ]).start();
+        } else {
+            Animated.parallel([
+                Animated.timing(toggleAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+                Animated.stagger(
+                    30,
+                    anims.map(anim =>
+                        Animated.timing(anim, { toValue: 0, duration: 150, useNativeDriver: true })
+                    )
+                ),
+            ]).start(({ finished }) => {
+                if (finished) setShouldRender(false);
+            });
+        }
+    }, [open]);
+
+    const rotate = toggleAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '90deg'],
+    });
+
+    const isActive = open || shouldRender;
 
     return (
         <View style={styles.wrapper}>
-            {open && (
+            {shouldRender && (
                 <View style={styles.items}>
-                    {['1', '2', '3'].map((label) => (
-                        <TouchableOpacity
-                            key={label}
-                            style={[styles.circle, { backgroundColor: colors.surface.primary }]}
-                            activeOpacity={0.8}
-                            onPress={() => {}}
-                        >
-                            <Text style={[styles.label, { color: colors.text.primary }]}>{label}</Text>
-                        </TouchableOpacity>
-                    ))}
+                    {LABELS.map((label, i) => {
+                        const opacity = anims[i];
+                        const translateY = anims[i].interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [8, 0],
+                        });
+
+                        return (
+                            <Animated.View key={label} style={{ opacity, transform: [{ translateY }] }}>
+                                <TouchableOpacity
+                                    style={[styles.circle, { backgroundColor: colors.surface.primary }]}
+                                    activeOpacity={0.8}
+                                    onPress={() => {}}
+                                >
+                                    <Text style={[styles.label, { color: colors.text.primary }]}>{label}</Text>
+                                </TouchableOpacity>
+                            </Animated.View>
+                        );
+                    })}
                 </View>
             )}
 
             <TouchableOpacity
-                style={[styles.circle, { backgroundColor: colors.surface.primary }]}
+                style={[styles.circle, { backgroundColor: isActive ? colors.primary[500] : colors.surface.primary }]}
                 onPress={onToggle}
                 activeOpacity={0.8}
             >
-                <Ionicons name="ellipsis-vertical" size={20} color={colors.text.primary} />
+                <Animated.View style={{ transform: [{ rotate }] }}>
+                    <Ionicons
+                        name="ellipsis-vertical"
+                        size={20}
+                        color={isActive ? '#fff' : colors.text.primary}
+                    />
+                </Animated.View>
             </TouchableOpacity>
         </View>
     );
